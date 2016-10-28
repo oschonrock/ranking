@@ -17,3 +17,5 @@ $(P)     : $(P).c $(OBJS)
 $(OBJS) : $(.PREFIX).c $(.PREFIX).h
 	$(CC) $(CFLAGS) -c $(.PREFIX).c 
 
+clean :
+	rm -f *.core *.o ranking
