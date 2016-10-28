@@ -100,13 +100,21 @@ typedef enum {
     SAILNO,
 } StdField;
 
-char *cust_field_patterns[RESULT_ROW_MAX_FIELDS] = {
-    // order of patterns must match StdField enum above
-    "Helm",
-    "Sail no",
+typedef struct FieldMapItem {
+    StdField std;
+    int cust;
+    char* pattern;
+} FieldMapItem;
+
+#define NUMBER_PATTERNS 2
+FieldMapItem pattern_fmis[NUMBER_PATTERNS] = {
+    { HELM,          -1,   "Helm"              },
+    { SAILNO ,       -1,   "Sail no"           },
 };
 
 typedef struct FieldMap {
+    FieldMapItem items[RESULT_ROW_MAX_FIELDS];
+    int items_used;
     int map_to_cust[RESULT_ROW_MAX_FIELDS];
 } FieldMap;
 
@@ -115,13 +123,17 @@ typedef char *ResultRow[RESULT_ROW_MAX_FIELDS];
 FieldMap *regattaMakeMap(xmlNodeSetPtr header_cells)
 {
     FieldMap *fm = malloc(sizeof(FieldMap));
+    *fm = (FieldMap) { .map_to_cust = {-1} }; // brace hell to make compiler happy
     char *val;
     int c, p;
     for(c = 0; c < header_cells->nodeNr; c++) {
         val = (char *)xmlNodeGetContent(header_cells->nodeTab[c]);
-        for(p = 0; p < RESULT_ROW_MAX_FIELDS; p++) {
-            if (cust_field_patterns[p] && strcasecmp(val, cust_field_patterns[p]) == 0) {
-                fm->map_to_cust[p] = c;
+        for(p = 0; p < NUMBER_PATTERNS; p++) {
+            if (strcasecmp(val, pattern_fmis[p].pattern) == 0) {
+                fm->items[p].std = pattern_fmis[p].std;
+                fm->items[p].cust = c;
+                fm->map_to_cust[pattern_fmis[p].std] = c;
+                fm->items_used++;
                 break;
             }
         }
@@ -130,12 +142,12 @@ FieldMap *regattaMakeMap(xmlNodeSetPtr header_cells)
     return fm;
 }
 
-int regattaMapToCust(StdField std, FieldMap *fm) {
-    return fm->map_to_cust[std];
+int regattaMapToCust(FieldMap *fm, StdField std) {
+    return  fm->map_to_cust[std];
 }
 
-char *regattaMappedRowVal(ResultRow row, StdField std, FieldMap *fm) {
-    return row[regattaMapToCust(std, fm)];
+char *regattaMappedRowVal(FieldMap *fm, ResultRow row, StdField std) {
+    return row[regattaMapToCust(fm, std)];
 }
 
 void regattaLoad(Regatta *regatta)
@@ -159,8 +171,8 @@ void regattaLoad(Regatta *regatta)
                 row_vals[c] = (char *)xmlNodeGetContent(cells->nodeTab[c]);
             }
 
-            sailorPoolFindOrNew(regattaMappedRowVal(row_vals, HELM, fm),
-                                atoi(regattaMappedRowVal(row_vals, SAILNO, fm)));
+            sailorPoolFindOrNew(regattaMappedRowVal(fm, row_vals, HELM),
+                                atoi(regattaMappedRowVal(fm, row_vals, SAILNO)));
       
             for(c = 0; c < cells->nodeNr; c++) free(row_vals[c]); // cleanup strings created
             xmlXPathFreeNodeSet(cells);
