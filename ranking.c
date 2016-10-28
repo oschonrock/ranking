@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
     }
   }
         
-  fprintf(stdout, "%zu Sailors\n", sailorPoolGetUsed());
+  fprintf(stderr, "%zu Sailors\n", sailorPoolGetUsed());
   for (int s = 0; s < sailorPoolGetUsed(); s++) {
     Sailor *sailor = SailorPoolFindByIndex(s);
     fprintf(stdout, "#%-3d %5i %-30s\n", s + 1, sailor->sailno, sailor->name);
