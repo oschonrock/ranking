@@ -132,14 +132,14 @@ void regattaLoad(Regatta *regatta)
 xmlDocPtr getDoc(char *url) {
   xmlDocPtr doc;
 
-  struct MemoryStruct buffer;
-  buffer.memory = malloc(1);
+  struct Buffer buffer;
+  buffer.mem = malloc(1);
   buffer.size = 0;
   
   curl_load_url(url, &buffer);
-  doc = htmlReadMemory(buffer.memory, buffer.size, url, NULL, 0);
+  doc = htmlReadMemory(buffer.mem, buffer.size, url, NULL, 0);
 
-  free(buffer.memory);
+  free(buffer.mem);
   if (doc == NULL ) {
     fprintf(stderr,"Document not parsed successfully. \n");
     return NULL;

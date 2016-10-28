@@ -55,33 +55,32 @@ void curl_kill_locks(void)
   OPENSSL_free(lockarray);
 }
 
-static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+static size_t curl_write_buffer_cb(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t realsize = size * nmemb;
-  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+  Buffer *buffer = (Buffer *)userp;
 
-  mem->memory = realloc(mem->memory, mem->size + realsize + 1);
-  if(mem->memory == NULL) {
-    /* out of memory! */
-    printf("not enough memory (realloc returned NULL)\n");
+  buffer->mem = realloc(buffer->mem, buffer->size + realsize + 1);
+  if(buffer->mem == NULL) {
+    fprintf(stderr, "not enough memory (realloc returned NULL)\n");
     return 0;
   }
 
-  memcpy(&(mem->memory[mem->size]), contents, realsize);
-  mem->size += realsize;
-  mem->memory[mem->size] = 0;
+  memcpy(&(buffer->mem[buffer->size]), contents, realsize);
+  buffer->size += realsize;
+  buffer->mem[buffer->size] = 0;
 
   return realsize;
 }
 
-void curl_load_url(char *url, struct MemoryStruct *buffer)
+void curl_load_url(char *url, Buffer *buffer)
 {
   CURL *curl;
   CURLcode res;
 
   curl = curl_easy_init();
   curl_easy_setopt(curl, CURLOPT_URL, url);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_buffer_cb);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)buffer);
   curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
   res = curl_easy_perform(curl);
@@ -90,14 +89,7 @@ void curl_load_url(char *url, struct MemoryStruct *buffer)
             curl_easy_strerror(res));
   }
   else {
-    /*
-     * Now, our chunk.memory points to a memory block that is chunk.size
-     * bytes big and contains the remote file.
-     *
-     * Do something nice with it!
-     */
-
-    printf("%lu bytes retrieved\n", (long)buffer->size);
+    fprintf(stderr, "%lu bytes retrieved\n", (long)buffer->size);
   }
 
   curl_easy_cleanup(curl);
