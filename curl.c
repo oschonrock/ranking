@@ -10,7 +10,7 @@
 /* we have this global to let the callback get easy access to it */
 static pthread_mutex_t *lockarray;
 
-static void lock_callback(int mode, int type, char *file, int line)
+static void curl_ssl_lock_cb(int mode, int type, char *file, int line)
 {
   (void)file;
   (void)line;
@@ -22,14 +22,14 @@ static void lock_callback(int mode, int type, char *file, int line)
   }
 }
 
-static unsigned long thread_id(void)
+static unsigned long curl_ssl_thread_id(void)
 {
   unsigned long ret;
   ret = (unsigned long)pthread_self();
   return ret;
 }
 
-void curl_init_locks(void)
+void curl_ssl_init_locks(void)
 {
   int i;
 
@@ -37,11 +37,11 @@ void curl_init_locks(void)
   for(i = 0; i < CRYPTO_num_locks(); i++) {
     pthread_mutex_init(&(lockarray[i]), NULL);
   }
-  CRYPTO_set_id_callback((unsigned long (*)())thread_id);
-  CRYPTO_set_locking_callback((void (*)())lock_callback);
+  CRYPTO_set_id_callback((unsigned long (*)())curl_ssl_thread_id);
+  CRYPTO_set_locking_callback((void (*)())curl_ssl_lock_cb);
 }
 
-void curl_kill_locks(void)
+void curl_ssl_kill_locks(void)
 {
   int i;
 

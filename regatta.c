@@ -28,7 +28,7 @@ void regattaPoolInit()
 
   /* Must initialize libcurl before any threads are started */
   curl_global_init(CURL_GLOBAL_ALL);
-  curl_init_locks();
+  curl_ssl_init_locks();
 
   // just a single public instance of the pool, not going to pass it around
   // NULL pointer for __rp.regattas means that first call to regattaPoolAdd will realloc from NULL (equiv to malloc)
@@ -52,7 +52,7 @@ void regattaPoolFree()
   pthread_mutex_destroy(&__rp_mutex);
   pthread_mutexattr_destroy(&__rp_mutex_attr);
 
-  curl_kill_locks();
+  curl_ssl_kill_locks();
   curl_global_cleanup();
   xmlCleanupParser();
 }
