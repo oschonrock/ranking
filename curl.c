@@ -36,7 +36,7 @@ void curl_init_locks(void)
 
   lockarray=(pthread_mutex_t *)OPENSSL_malloc(CRYPTO_num_locks() *
                                             sizeof(pthread_mutex_t));
-  for(i=0; i<CRYPTO_num_locks(); i++) {
+  for(i=0; i < CRYPTO_num_locks(); i++) {
     pthread_mutex_init(&(lockarray[i]), NULL);
   }
 
@@ -49,7 +49,7 @@ void curl_kill_locks(void)
   int i;
 
   CRYPTO_set_locking_callback(NULL);
-  for(i=0; i<CRYPTO_num_locks(); i++)
+  for(i=0; i < CRYPTO_num_locks(); i++)
     pthread_mutex_destroy(&(lockarray[i]));
 
   OPENSSL_free(lockarray);
@@ -94,4 +94,3 @@ void curl_load_url(char *url, Buffer *buffer)
 
   curl_easy_cleanup(curl);
 }
-

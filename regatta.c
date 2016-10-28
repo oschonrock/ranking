@@ -132,9 +132,7 @@ void regattaLoad(Regatta *regatta)
 xmlDocPtr getDoc(char *url) {
   xmlDocPtr doc;
 
-  struct Buffer buffer;
-  buffer.mem = malloc(1);
-  buffer.size = 0;
+  struct Buffer buffer = (Buffer) {0}; // .mem NULL prt to memory buffer will be set by realloc
   
   curl_load_url(url, &buffer);
   doc = htmlReadMemory(buffer.mem, buffer.size, url, NULL, 0);
