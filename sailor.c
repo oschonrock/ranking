@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <strings.h>
+#include <string.h>  // strdup
 #include "sailor.h"
 
 typedef struct SailorPool {
@@ -72,10 +73,9 @@ Sailor *sailorPoolFindOrNew(char *name, int sailno)
     if (found) {
         sailor = __sp.sailors[i];
         // if we are not going to use the name string passed in, we must free it (memleak!)
-        free(name);
     } else {
         sailor = sailorNew();
-        sailor->name = name;
+        sailor->name = strdup(name);
         sailor->sailno = sailno;
     }
     pthread_mutex_unlock(&__sp_mutex);

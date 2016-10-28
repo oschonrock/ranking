@@ -9,7 +9,7 @@
 #include "sailor.h"
 #include "curl.h"
   
-// just a single public instance of the pool, not going to pass it around
+// just a single private instance of the pool, not going to pass it around
 RegattaPool __rp;
 
 // make it thread-safe
@@ -30,7 +30,6 @@ void regattaPoolInit()
     curl_global_init(CURL_GLOBAL_ALL);
     curl_ssl_init_locks();
 
-    // just a single public instance of the pool, not going to pass it around
     // NULL pointer for __rp.regattas means that first call to regattaPoolAdd will realloc from NULL (equiv to malloc)
     __rp = (RegattaPool) {0};
     // in case we make nested or recursive calls which both lock, we use RECURSIVE type, which counts locks and unlocks
@@ -116,7 +115,7 @@ void regattaLoad(Regatta *regatta)
             }
 
             // future mapping goes here
-            sailorPoolFindOrNew(strdup((char *)row_vals[3]), atoi(row_vals[2]));
+            sailorPoolFindOrNew(row_vals[3], atoi(row_vals[2]));
       
             // cleanup strings created
             for(c = 0; c < cells->nodeNr; c++) free(row_vals[c]);
