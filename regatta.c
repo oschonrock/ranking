@@ -138,9 +138,9 @@ xmlDocPtr getDoc(char *url) {
         fprintf(stderr,"Document not loaded successfully. \n");
         return NULL;
     }
-    char *base = malloc(MAXPATHLEN);
-    base = strdup(dirname(url));  // take a copy as it is not guaranted to persist
+    char *base = strdup(dirname(url));         // take a copy as it is not guaranted to persist or might be part of url
     xmlDocPtr doc = htmlReadMemory(buffer.mem, buffer.size, base, NULL, 0);
+    fprintf(stderr,"base = %s\n", base);
     free(base);
     free(buffer.mem); // don't need this anymore
 
