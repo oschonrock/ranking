@@ -150,7 +150,9 @@ void regattaLoad(Regatta *regatta)
     if (tables->nodeNr == 1)
     {
         rows = getXpathNodeSetRel(".//tr", tables->nodeTab[0], ctx);     // rows of the current table
-        FieldMap *fm = regattaMakeMap(getXpathNodeSetRel(".//td", rows->nodeTab[0], ctx));
+        xmlNodeSetPtr header_cells = getXpathNodeSetRel(".//td", rows->nodeTab[0], ctx);
+        FieldMap *fm = regattaMakeMap(header_cells);
+        xmlXPathFreeNodeSet(header_cells);
         for(r = 1; r < rows->nodeNr; r++) {                              // r = 1, because we want to skip first row, as headers
             cells = getXpathNodeSetRel(".//td", rows->nodeTab[r], ctx);  // cells of the current row
             for(c = 0; c < cells->nodeNr; c++) {
@@ -164,6 +166,7 @@ void regattaLoad(Regatta *regatta)
             xmlXPathFreeNodeSet(cells);
         }
         xmlXPathFreeNodeSet(rows);
+        free(fm);
     }
 
     xmlXPathFreeNodeSet(tables);
