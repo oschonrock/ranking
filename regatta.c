@@ -3,6 +3,8 @@
 #include <pthread.h>
 #include <curl/curl.h>
 #include <string.h>
+#include <libgen.h>          // basename
+#include <sys/param.h>       // MAXPATHLEN
 #include "regatta.h"
 #include "sailor.h"
 #include "curl.h"
@@ -130,19 +132,23 @@ void regattaLoad(Regatta *regatta)
 }
 
 xmlDocPtr getDoc(char *url) {
-  xmlDocPtr doc;
 
-  struct Buffer buffer = (Buffer) {0}; // .mem NULL prt to memory buffer will be set by realloc
+  Buffer buffer = (Buffer) {0}; // .mem NULL prt to memory buffer will be set by realloc
   
-  curl_load_url(url, &buffer);
-  doc = htmlReadMemory(buffer.mem, buffer.size, url, NULL, 0);
+  if (curl_load_url(url, &buffer)) {
+    fprintf(stderr,"Document not loaded successfully. \n");
+    return NULL;
+  }
+  char *base = malloc(MAXPATHLEN);
+  base = strdup(dirname(url));  // take a copy as it is not guaranted to persist
+  xmlDocPtr doc = htmlReadMemory(buffer.mem, buffer.size, base, NULL, 0);
+  free(base);
+  free(buffer.mem); // don't need this anymore
 
-  free(buffer.mem);
   if (doc == NULL ) {
     fprintf(stderr,"Document not parsed successfully. \n");
     return NULL;
   }
-
   return doc;
 }
 
