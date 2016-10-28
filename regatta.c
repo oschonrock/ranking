@@ -93,30 +93,72 @@ void regattaFree(Regatta *regatta)
     free(regatta);             // and the struct which contains the 2D array of pointer to the result xmlChar's
 }
 
+#define RESULT_ROW_MAX_FIELDS 25
+
+typedef enum {
+    HELM,
+    SAILNO,
+} StdField;
+
+char *cust_field_patterns[RESULT_ROW_MAX_FIELDS] = {
+    // order of patterns must match StdField enum above
+    "Helm",
+    "Sail no",
+};
+
+typedef struct FieldMap {
+    int map_to_cust[RESULT_ROW_MAX_FIELDS];
+} FieldMap;
+
+typedef char *ResultRow[RESULT_ROW_MAX_FIELDS];
+
+FieldMap *regattaMakeMap(xmlNodeSetPtr header_cells)
+{
+    FieldMap *fm = malloc(sizeof(FieldMap));
+    char *val;
+    int c, p;
+    for(c = 0; c < header_cells->nodeNr; c++) {
+        val = (char *)xmlNodeGetContent(header_cells->nodeTab[c]);
+        for(p = 0; p < RESULT_ROW_MAX_FIELDS; p++) {
+            if (cust_field_patterns[p] && strcasecmp(val, cust_field_patterns[p]) == 0) {
+                fm->map_to_cust[p] = c;
+                break;
+            }
+        }
+        free(val);
+    }
+    return fm;
+}
+
+int regattaMapToCust(StdField std, FieldMap *fm) {
+    return fm->map_to_cust[std];
+}
+
+char *regattaMappedRowVal(ResultRow row, StdField std, FieldMap *fm) {
+    return row[regattaMapToCust(std, fm)];
+}
+
 void regattaLoad(Regatta *regatta)
 {
     xmlDocPtr doc = getDoc(regatta->url);
     xmlXPathContextPtr ctx = xmlXPathNewContext(doc); 
 
     int r, c;
-    char *row_vals[25] = {0};
-    // beginning of map
-    typedef enum { HELM, SAILNO } StdField;
-    int map_to_cust[25] = {-1};
-    map_to_cust[HELM] = 3;
-    map_to_cust[SAILNO] = 2;
+    ResultRow row_vals = {0};
     xmlNodeSetPtr tables = getXpathNodeSet("//table[@border=1]", ctx);
     xmlNodeSetPtr rows, cells;
     if (tables->nodeNr == 1)
     {
         rows = getXpathNodeSetRel(".//tr", tables->nodeTab[0], ctx);     // rows of the current table
+        FieldMap *fm = regattaMakeMap(getXpathNodeSetRel(".//td", rows->nodeTab[0], ctx));
         for(r = 1; r < rows->nodeNr; r++) {                              // r = 1, because we want to skip first row, as headers
             cells = getXpathNodeSetRel(".//td", rows->nodeTab[r], ctx);  // cells of the current row
             for(c = 0; c < cells->nodeNr; c++) {
                 row_vals[c] = (char *)xmlNodeGetContent(cells->nodeTab[c]);
             }
 
-            sailorPoolFindOrNew(row_vals[map_to_cust[HELM]], atoi(row_vals[map_to_cust[SAILNO]]));
+            sailorPoolFindOrNew(regattaMappedRowVal(row_vals, HELM, fm),
+                                atoi(regattaMappedRowVal(row_vals, SAILNO, fm)));
       
             for(c = 0; c < cells->nodeNr; c++) free(row_vals[c]); // cleanup strings created
             xmlXPathFreeNodeSet(cells);
