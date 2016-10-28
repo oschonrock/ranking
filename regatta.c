@@ -95,30 +95,30 @@ void regattaFree(Regatta *regatta)
 
 void regattaLoad(Regatta *regatta)
 {
-    // fprintf(stdout, "Starting: %s\n", regatta->url);
-
-    // can't pass url to libxml->getDoc, not thread safe, need to use curl
     xmlDocPtr doc = getDoc(regatta->url);
     xmlXPathContextPtr ctx = xmlXPathNewContext(doc); 
 
     int r, c;
     char *row_vals[25] = {0};
+    // beginning of map
+    typedef enum { HELM, SAILNO } StdField;
+    int map_to_cust[25] = {-1};
+    map_to_cust[HELM] = 3;
+    map_to_cust[SAILNO] = 2;
     xmlNodeSetPtr tables = getXpathNodeSet("//table[@border=1]", ctx);
     xmlNodeSetPtr rows, cells;
     if (tables->nodeNr == 1)
     {
-        rows = getXpathNodeSetRel(".//tr", tables->nodeTab[0], ctx);   // rows of the current table
-        for(r = 1; r < rows->nodeNr; r++) {                            // skip first row, as headers
+        rows = getXpathNodeSetRel(".//tr", tables->nodeTab[0], ctx);     // rows of the current table
+        for(r = 1; r < rows->nodeNr; r++) {                              // r = 1, because we want to skip first row, as headers
             cells = getXpathNodeSetRel(".//td", rows->nodeTab[r], ctx);  // cells of the current row
             for(c = 0; c < cells->nodeNr; c++) {
                 row_vals[c] = (char *)xmlNodeGetContent(cells->nodeTab[c]);
             }
 
-            // future mapping goes here
-            sailorPoolFindOrNew(row_vals[3], atoi(row_vals[2]));
+            sailorPoolFindOrNew(row_vals[map_to_cust[HELM]], atoi(row_vals[map_to_cust[SAILNO]]));
       
-            // cleanup strings created
-            for(c = 0; c < cells->nodeNr; c++) free(row_vals[c]);
+            for(c = 0; c < cells->nodeNr; c++) free(row_vals[c]); // cleanup strings created
             xmlXPathFreeNodeSet(cells);
         }
         xmlXPathFreeNodeSet(rows);
@@ -134,12 +134,15 @@ xmlDocPtr getDoc(char *url) {
 
     Buffer buffer = (Buffer) {0}; // .mem NULL prt to memory buffer will be set by realloc
   
+    // can't pass url to libxml->htmlParseFile, appears it's not thread safe, need to use curl
+    // TODO: there might be an option to parse the stream, rather than wait for the full html: htmlReadIO?
     if (curl_load_url(url, &buffer)) {
         fprintf(stderr,"Document not loaded successfully. \n");
         return NULL;
     }
     char *base = strdup(dirname(url));         // take a copy as it is not guaranted to persist or might be part of url
-    xmlDocPtr doc = htmlReadMemory(buffer.mem, buffer.size, base, NULL, 0);
+    xmlDocPtr doc = htmlReadMemory(buffer.mem, buffer.size, base, NULL,
+                                   HTML_PARSE_NONET | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING | HTML_PARSE_RECOVER); // for dirty html(5)
     free(base);
     free(buffer.mem); // don't need this anymore
 
