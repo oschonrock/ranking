@@ -34,8 +34,7 @@ void sailorPoolFree()
     pthread_mutex_lock(&__sp_mutex);
     for (int i=0; i<__sp.used; i++)
     {
-        free(__sp.sailors[i]->name);   // free the name
-        free(__sp.sailors[i]);         // each sailor Object
+        sailorFree(__sp.sailors[i]);   // each sailor Object
     }
     free(__sp.sailors);          // and the array of pointers to those objects
     __sp = (SailorPool) {0};     // and reset the whole pool
@@ -57,14 +56,25 @@ Sailor *sailorNew()
     return sailor;
 }
 
-Sailor *sailorPoolFindOrNew(char *name, int sailno)
+void sailorFree(Sailor *sailor)
+{
+    if (sailor->name) {
+        free(sailor->name);      // free the name
+    }
+    if (sailor->gender) {
+        free(sailor->gender);   // free the gender
+    }
+    free(sailor);
+}
+
+Sailor *sailorPoolFindByExampleOrNew(Sailor *ex_sailor)
 {
     bool found = false;
     int i;
     pthread_mutex_lock(&__sp_mutex);
     for (i = 0; !found && i < __sp.used; i++)
     {
-        if (strcasecmp(__sp.sailors[i]->name, name) == 0 && __sp.sailors[i]->sailno == sailno) {
+        if (strcasecmp(__sp.sailors[i]->name, ex_sailor->name) == 0 && __sp.sailors[i]->sailno == ex_sailor->sailno) {
             found = true;
         }
     }
@@ -72,13 +82,36 @@ Sailor *sailorPoolFindOrNew(char *name, int sailno)
     Sailor *sailor;
     if (found) {
         sailor = __sp.sailors[i];
-        // if we are not going to use the name string passed in, we must free it (memleak!)
+        // TODO update details
+        sailorFree(ex_sailor);
     } else {
-        sailor = sailorNew();
-        sailor->name = strdup(name);
-        sailor->sailno = sailno;
+        sailor = ex_sailor;
+        sailorPoolAdd(sailor);
     }
     pthread_mutex_unlock(&__sp_mutex);
+    return sailor;
+}
+
+Sailor *sailorSetName(Sailor *sailor, char *name)
+{
+    sailor->name = strdup(name);
+    return sailor;
+}
+
+Sailor *sailorSetSailno(Sailor *sailor, int sailno)
+{
+    sailor->sailno = sailno;
+    return sailor;
+}
+
+Sailor *sailorSetSailnoString(Sailor *sailor, char *sailno_str)
+{
+    return sailorSetSailno(sailor, atoi(sailno_str));
+}
+
+Sailor *sailorSetGender(Sailor *sailor, char *gender)
+{
+    sailor->gender = strndup(gender, 1); // just first letter
     return sailor;
 }
 

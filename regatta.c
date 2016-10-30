@@ -96,44 +96,51 @@ void regattaFree(Regatta *regatta)
 #define RESULT_ROW_MAX_FIELDS 25
 
 typedef enum {
-    HELM,
-    SAILNO,
+    NAF = -1,        // not a field, used in std and cust
+    HELM = 0,        // must start at zero
+    SAILNO,          // and then 1,2,3
+    GENDER,
 } StdField;
 
 typedef struct FieldMapItem {
     StdField std;
     int cust;
     char* pattern;
+    Sailor * (*setter)(Sailor *, char *);
 } FieldMapItem;
 
-#define NUMBER_PATTERNS 2
-FieldMapItem pattern_fmis[NUMBER_PATTERNS] = {
-    { HELM,          -1,   "Helm"              },
-    { SAILNO ,       -1,   "Sail no"           },
+
+FieldMapItem pattern_fmis[] = {
+    { HELM,          NAF,   "Helm",             &sailorSetName },  // the '&' is not strictly required by the compiler but more correct
+    { SAILNO,        NAF,   "Sail no",          &sailorSetSailnoString },
+    { GENDER,        NAF,   "M/F",              &sailorSetGender },
+    { NAF,           NAF,   "",                 NULL },  // End of list terminator
 };
 
 typedef struct FieldMap {
     FieldMapItem items[RESULT_ROW_MAX_FIELDS];
-    int items_used;
-    int map_to_cust[RESULT_ROW_MAX_FIELDS];
 } FieldMap;
 
 typedef char *ResultRow[RESULT_ROW_MAX_FIELDS];
 
-FieldMap *regattaMakeMap(xmlNodeSetPtr header_cells)
+FieldMap *regattaNewFieldMap()
 {
     FieldMap *fm = malloc(sizeof(FieldMap));
-    *fm = (FieldMap) { .map_to_cust = {-1} }; // brace hell to make compiler happy
+    for (int std = 0; std < RESULT_ROW_MAX_FIELDS; std++) fm->items[std] = (FieldMapItem) { std, NAF, NULL, NULL };
+    return fm;
+}
+
+FieldMap *regattaMakeFieldMap(xmlNodeSetPtr header_cells)
+{
+    FieldMap *fm = regattaNewFieldMap();
     char *val;
     int c, p;
     for(c = 0; c < header_cells->nodeNr; c++) {
         val = (char *)xmlNodeGetContent(header_cells->nodeTab[c]);
-        for(p = 0; p < NUMBER_PATTERNS; p++) {
+        for(p = 0; pattern_fmis[p].std != NAF; p++) {
             if (strcasecmp(val, pattern_fmis[p].pattern) == 0) {
-                fm->items[p].std = pattern_fmis[p].std;
-                fm->items[p].cust = c;
-                fm->map_to_cust[pattern_fmis[p].std] = c;
-                fm->items_used++;
+                fm->items[pattern_fmis[p].std] = pattern_fmis[p];   // copy pattern
+                fm->items[pattern_fmis[p].std].cust = c;            // record mathching pattern
                 break;
             }
         }
@@ -142,12 +149,16 @@ FieldMap *regattaMakeMap(xmlNodeSetPtr header_cells)
     return fm;
 }
 
-int regattaMapToCust(FieldMap *fm, StdField std) {
-    return  fm->map_to_cust[std];
-}
-
-char *regattaMappedRowVal(FieldMap *fm, ResultRow row, StdField std) {
-    return row[regattaMapToCust(fm, std)];
+Sailor *regattaBuildSailorFromMappedRow(ResultRow row, FieldMap *fm) {
+    // new but not into pool
+    Sailor *sailor= malloc(sizeof(Sailor));
+    *sailor= (Sailor) {0};
+    
+    for(int std = 0; std < RESULT_ROW_MAX_FIELDS && fm->items[std].cust != NAF; std++) {
+        // use the function pointer "setter" to update the sailor with the mapped row value
+        (fm->items[std].setter)(sailor, row[fm->items[std].cust]);
+    }
+    return sailor;
 }
 
 void regattaLoad(Regatta *regatta)
@@ -163,7 +174,7 @@ void regattaLoad(Regatta *regatta)
     {
         rows = getXpathNodeSetRel(".//tr", tables->nodeTab[0], ctx);     // rows of the current table
         xmlNodeSetPtr header_cells = getXpathNodeSetRel(".//td", rows->nodeTab[0], ctx);
-        FieldMap *fm = regattaMakeMap(header_cells);
+        FieldMap *fm = regattaMakeFieldMap(header_cells);
         xmlXPathFreeNodeSet(header_cells);
         for(r = 1; r < rows->nodeNr; r++) {                              // r = 1, because we want to skip first row, as headers
             cells = getXpathNodeSetRel(".//td", rows->nodeTab[r], ctx);  // cells of the current row
@@ -171,9 +182,10 @@ void regattaLoad(Regatta *regatta)
                 row_vals[c] = (char *)xmlNodeGetContent(cells->nodeTab[c]);
             }
 
-            sailorPoolFindOrNew(regattaMappedRowVal(fm, row_vals, HELM),
-                                atoi(regattaMappedRowVal(fm, row_vals, SAILNO)));
-      
+
+            Sailor *sailor_ex =regattaBuildSailorFromMappedRow(row_vals, fm);
+            sailorPoolFindByExampleOrNew(sailor_ex); // sailor_ex gets free'd inside, or added to pool. ignore returned Sailor * for now
+            
             for(c = 0; c < cells->nodeNr; c++) free(row_vals[c]); // cleanup strings created
             xmlXPathFreeNodeSet(cells);
         }
@@ -184,7 +196,6 @@ void regattaLoad(Regatta *regatta)
     xmlXPathFreeNodeSet(tables);
     xmlXPathFreeContext(ctx); 
     xmlFreeDoc(doc);
-    // fprintf(stdout, "Done: %s\n", regatta->url);
 }
 
 xmlDocPtr getDoc(char *url) {
