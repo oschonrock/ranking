@@ -135,7 +135,7 @@ FieldMap *regattaNewFieldMap()
 #define OVECCOUNT 30    /* should be a multiple of 3 */
 
 /* very simple matching wrapper for pcre, just say if it matched at all */
-bool preg_match(char *pattern, char *subject, int options)
+bool preg_match(char *pattern, char *subject, bool ignore_case)
 {
     pcre *re;
     const char *error;
@@ -144,11 +144,11 @@ bool preg_match(char *pattern, char *subject, int options)
     int rc;
 
     re = pcre_compile(
-        pattern,              /* the pattern */
-        options,                    /* default options */
-        &error,               /* for error message */
-        &erroffset,           /* for error offset */
-        NULL);                /* use default character tables */
+        pattern,                                      /* the pattern */
+        ignore_case ? PCRE_CASELESS : 0,              /* default options */
+        &error,                                       /* for error message */
+        &erroffset,                                   /* for error offset */
+        NULL);                                        /* use default character tables */
 
     /* Compilation failed: print the error message and exit */
 
@@ -165,7 +165,7 @@ bool preg_match(char *pattern, char *subject, int options)
         NULL,                 /* no extra data - we didn't study the pattern */
         subject,              /* the subject string */
         subject_length,       /* the length of the subject */
-        options,                    /* start at offset 0 in the subject */
+        0,                    /* start at offset 0 in the subject */
         0,                    /* default options */
         ovector,              /* output vector for substring information */
         OVECCOUNT);           /* number of elements in the output vector */
@@ -176,7 +176,9 @@ bool preg_match(char *pattern, char *subject, int options)
     {
         switch(rc)
         {
-        case PCRE_ERROR_NOMATCH: fprintf(stderr, "No match for %s in %s\n", pattern, subject); break;
+        case PCRE_ERROR_NOMATCH:
+            /* fprintf(stderr, "No match for %s in %s\n", pattern, subject); */
+            break;
             /*
               Handle other special cases if you like
             */
@@ -200,7 +202,7 @@ FieldMap *regattaMakeFieldMap(xmlNodeSetPtr header_cells)
     for(c = 0; c < header_cells->nodeNr; c++) {
         val = (char *)xmlNodeGetContent(header_cells->nodeTab[c]);
         for(p = 0; pattern_fmis[p].std != NAF; p++) {
-            if (preg_match(pattern_fmis[p].pattern, val, PCRE_CASELESS)) {
+            if (preg_match(pattern_fmis[p].pattern, val, true)) {
                 fm->items[pattern_fmis[p].std] = pattern_fmis[p];   // copy pattern
                 fm->items[pattern_fmis[p].std].cust = c;            // record mathching pattern
                 break;
@@ -243,7 +245,6 @@ void regattaLoad(Regatta *regatta)
             for(c = 0; c < cells->nodeNr; c++) {
                 row_vals[c] = (char *)xmlNodeGetContent(cells->nodeTab[c]);
             }
-
 
             Sailor *sailor_ex =regattaBuildSailorFromMappedRow(row_vals, fm);
             sailorPoolFindByExampleOrNew(sailor_ex); // sailor_ex gets free'd inside, or added to pool. ignore returned Sailor * for now
