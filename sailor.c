@@ -74,7 +74,8 @@ Sailor *sailorPoolFindByExampleOrNew(Sailor *ex_sailor)
     pthread_mutex_lock(&__sp_mutex);
     for (i = 0; !found && i < __sp.used; i++)
     {
-        if (strcasecmp(__sp.sailors[i]->name, ex_sailor->name) == 0 && __sp.sailors[i]->sailno == ex_sailor->sailno) {
+        if (ex_sailor->name && strcasecmp(__sp.sailors[i]->name, ex_sailor->name) == 0 &&
+            ex_sailor->sailno && __sp.sailors[i]->sailno == ex_sailor->sailno) {
             found = true;
         }
     }
