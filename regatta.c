@@ -5,6 +5,8 @@
 #include <string.h>
 #include <libgen.h>          // basename
 #include <sys/param.h>       // MAXPATHLEN
+#include <stdbool.h>
+#include <pcre.h>
 #include "regatta.h"
 #include "sailor.h"
 #include "curl.h"
@@ -130,6 +132,66 @@ FieldMap *regattaNewFieldMap()
     return fm;
 }
 
+#define OVECCOUNT 30    /* should be a multiple of 3 */
+
+/* very simple matching wrapper for pcre, just say if it matched at all */
+bool preg_match(char *pattern, char *subject, int options)
+{
+    pcre *re;
+    const char *error;
+    int erroffset;
+    int ovector[OVECCOUNT];
+    int rc;
+
+    re = pcre_compile(
+        pattern,              /* the pattern */
+        options,                    /* default options */
+        &error,               /* for error message */
+        &erroffset,           /* for error offset */
+        NULL);                /* use default character tables */
+
+    /* Compilation failed: print the error message and exit */
+
+    if (re == NULL)
+    {
+        fprintf(stderr, "PCRE compilation failed at offset %d: %s\n", erroffset, error);
+        return false;
+    }
+
+    int subject_length = (int)strlen(subject);
+    
+    rc = pcre_exec(
+        re,                   /* the compiled pattern */
+        NULL,                 /* no extra data - we didn't study the pattern */
+        subject,              /* the subject string */
+        subject_length,       /* the length of the subject */
+        options,                    /* start at offset 0 in the subject */
+        0,                    /* default options */
+        ovector,              /* output vector for substring information */
+        OVECCOUNT);           /* number of elements in the output vector */
+
+    /* Matching failed: handle error cases */
+
+    if (rc < 0)
+    {
+        switch(rc)
+        {
+        case PCRE_ERROR_NOMATCH: fprintf(stderr, "No match for %s in %s\n", pattern, subject); break;
+            /*
+              Handle other special cases if you like
+            */
+        default: fprintf(stderr, "Matching error %d\n", rc); break;
+        }
+        pcre_free(re);     /* Release memory used for the compiled pattern */
+        return false;
+    }
+
+    /* Match succeded */
+    pcre_free(re);     /* Release memory used for the compiled pattern */
+    return true;
+    
+}
+
 FieldMap *regattaMakeFieldMap(xmlNodeSetPtr header_cells)
 {
     FieldMap *fm = regattaNewFieldMap();
@@ -138,7 +200,7 @@ FieldMap *regattaMakeFieldMap(xmlNodeSetPtr header_cells)
     for(c = 0; c < header_cells->nodeNr; c++) {
         val = (char *)xmlNodeGetContent(header_cells->nodeTab[c]);
         for(p = 0; pattern_fmis[p].std != NAF; p++) {
-            if (strcasecmp(val, pattern_fmis[p].pattern) == 0) {
+            if (preg_match(pattern_fmis[p].pattern, val, PCRE_CASELESS)) {
                 fm->items[pattern_fmis[p].std] = pattern_fmis[p];   // copy pattern
                 fm->items[pattern_fmis[p].std].cust = c;            // record mathching pattern
                 break;

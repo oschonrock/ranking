@@ -7,7 +7,7 @@ OBJS   = regatta.o sailor.o curl.o
 
 # compiler and linker options
 CFLAGS = -std=c11 -Wall -pedantic -g -O0 `curl-config --cflags` `xml2-config --cflags`
-LDLIBS = -lthr -lcrypto `curl-config --libs` `xml2-config --libs`
+LDLIBS = -lthr -lcrypto -lpcre `curl-config --libs` `xml2-config --libs`
 
 # compile the main program from its prg.c source file and the obj.o files
 $(P)     : $(P).c $(OBJS)
