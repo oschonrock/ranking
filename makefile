@@ -3,7 +3,7 @@
 P = ranking
 
 # these are the object file dependencies
-OBJS   = regatta.o sailor.o curl.o
+OBJS   = regatta.o sailor.o curl.o easylib.o
 
 # compiler and linker options
 CFLAGS = -std=c11 -Wall -pedantic -g -O0 `curl-config --cflags` `xml2-config --cflags`

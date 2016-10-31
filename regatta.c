@@ -5,8 +5,7 @@
 #include <string.h>
 #include <libgen.h>          // basename
 #include <sys/param.h>       // MAXPATHLEN
-#include <stdbool.h>
-#include <pcre.h>
+#include "easylib.h"
 #include "regatta.h"
 #include "sailor.h"
 #include "curl.h"
@@ -114,13 +113,14 @@ typedef struct FieldMapItem {
 } FieldMapItem;
 
 
-FieldMapItem pattern_fmis[] = {
-    { HELM,          NAF,   "Helm",             &sailorSetName },  // the '&' is not strictly required by the compiler but more correct
-    { SAILNO,        NAF,   "Sail no",          &sailorSetSailnoString },
+const FieldMapItem pattern_fmis[] = {
+    /* std enum      cust   patten              &setter func ptr */
+    { HELM,          NAF,   "Helm",             &sailorSetName },          // the '&' is not strictly required by the compiler but more correct
+    { SAILNO,        NAF,   "Sailno",           &sailorSetSailnoString },
     { GENDER,        NAF,   "M/F",              &sailorSetGender },
     { AGE,           NAF,   "Age",              &sailorSetAgeString },
     { CLUB,          NAF,   "Club",             &sailorSetClub },
-    { NAF,           NAF,   "",                 NULL },  // End of list terminator
+    { NAF,           NAF,   "",                 NULL },                    // End of list terminator
 };
 
 typedef struct FieldMap {
@@ -136,58 +136,6 @@ FieldMap *regattaNewFieldMap()
     return fm;
 }
 
-#define OVECCOUNT 30    /* should be a multiple of 3 */
-
-/* very simple matching wrapper for pcre, just say if it matched at all */
-bool preg_match(char *pattern, char *subject, bool ignore_case)
-{
-    pcre *re;
-    const char *error;
-    int erroffset;
-    int ovector[OVECCOUNT];
-    int rc;
-
-    re = pcre_compile(
-        pattern,                                      /* the pattern */
-        ignore_case ? PCRE_CASELESS : 0,              /* default options */
-        &error,                                       /* for error message */
-        &erroffset,                                   /* for error offset */
-        NULL);                                        /* use default character tables */
-
-    if (re == NULL) {
-        fprintf(stderr, "PCRE compilation failed at offset %d: %s\n", erroffset, error);
-        return false;
-    }
-
-    int subject_length = (int)strlen(subject);
-    
-    rc = pcre_exec(
-        re,                   /* the compiled pattern */
-        NULL,                 /* no extra data - we didn't study the pattern */
-        subject,              /* the subject string */
-        subject_length,       /* the length of the subject */
-        0,                    /* start at offset 0 in the subject */
-        0,                    /* default options */
-        ovector,              /* output vector for substring information */
-        OVECCOUNT);           /* number of elements in the output vector */
-
-    if (rc < 0) {
-        switch(rc) {
-        case PCRE_ERROR_NOMATCH:
-            break;
-        default:
-            fprintf(stderr, "Matching error %d\n", rc);
-            break;
-        }
-        pcre_free(re);     /* Release memory used for the compiled pattern */
-        return false;
-    }
-
-    pcre_free(re);     /* Release memory used for the compiled pattern */
-    return true;
-    
-}
-
 FieldMap *regattaMakeFieldMap(xmlNodeSetPtr header_cells)
 {
     FieldMap *fm = regattaNewFieldMap();
@@ -196,7 +144,11 @@ FieldMap *regattaMakeFieldMap(xmlNodeSetPtr header_cells)
     for(c = 0; c < header_cells->nodeNr; c++) {
         val = (char *)xmlNodeGetContent(header_cells->nodeTab[c]);
         for(p = 0; pattern_fmis[p].std != NAF; p++) {
-            if (preg_match(pattern_fmis[p].pattern, val, true)) {
+            char *trimmed_val = malloc(strlen(val) +1);
+            remove_spaces(trimmed_val, val);
+            bool matched = preg_match(pattern_fmis[p].pattern, trimmed_val, true);
+            free(trimmed_val);
+            if (matched) {
                 fm->items[pattern_fmis[p].std] = pattern_fmis[p];   // copy FieldMapItem (shallow copy, pattern char prt only)
                 fm->items[pattern_fmis[p].std].cust = c;            // record matching mapping
                 break;

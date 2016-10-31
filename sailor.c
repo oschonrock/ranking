@@ -64,6 +64,9 @@ void sailorFree(Sailor *sailor)
     if (sailor->gender) {
         free(sailor->gender);   // free the gender
     }
+    if (sailor->club) {
+        free(sailor->club);   // free the club
+    }
     free(sailor);
 }
 
