@@ -65,7 +65,7 @@ Regatta *regattaPoolAdd(Regatta *regatta)
         // grow the array allocation
         __rp.size = 3 * __rp.size / 2 + 8;
                 
-        Regatta **t_regattas = realloc(__rp.regattas, __rp.size * sizeof(Regatta));
+        Regatta **t_regattas = realloc(__rp.regattas, __rp.size * sizeof *regatta));
         if (!t_regattas) {
             fprintf(stdout, "realloc failed allocate bytes = %zu\n", __rp.size);
             free(__rp.regattas);
@@ -80,7 +80,7 @@ Regatta *regattaPoolAdd(Regatta *regatta)
 
 Regatta *regattaNew()
 {
-    Regatta *regatta= malloc(sizeof(Regatta));
+    Regatta *regatta= malloc(sizeof *regatta);
     *regatta= (Regatta) {0};   // not {} because that is a GNU extension: https://stackoverflow.com/questions/25578115/cryptic-struct-definition-in-c
     regattaPoolAdd(regatta);   // all the regattas must be in the pool        
     return regatta;
@@ -131,7 +131,7 @@ typedef char *ResultRow[RESULT_ROW_MAX_FIELDS];
 
 FieldMap *regattaNewFieldMap()
 {
-    FieldMap *fm = malloc(sizeof(FieldMap));
+    FieldMap *fm = malloc(sizeof *fm);
     for (int std = 0; std < RESULT_ROW_MAX_FIELDS; std++) fm->items[std] = (FieldMapItem) { std, NAF, NULL, NULL };
     return fm;
 }
@@ -161,7 +161,7 @@ FieldMap *regattaMakeFieldMap(xmlNodeSetPtr header_cells)
 
 Sailor *regattaBuildSailorFromMappedRow(ResultRow row, FieldMap *fm) {
     // new but not into pool
-    Sailor *sailor= malloc(sizeof(Sailor));
+    Sailor *sailor= malloc(sizeof *sailor);
     *sailor= (Sailor) {0};
     
     for(int std = 0; std < RESULT_ROW_MAX_FIELDS && fm->items[std].cust != NAF; std++) {

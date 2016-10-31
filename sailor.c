@@ -50,7 +50,7 @@ size_t sailorPoolGetUsed()
 
 Sailor *sailorNew()
 {
-    Sailor *sailor= malloc(sizeof(Sailor));
+    Sailor *sailor= malloc(sizeof *sailor);
     *sailor= (Sailor) {0};
     sailorPoolAdd(sailor);
     return sailor;
@@ -143,7 +143,7 @@ Sailor *sailorPoolAdd(Sailor *sailor)
         // grow the array allocation
         __sp.size = 3 * __sp.size / 2 + 8;
                 
-        Sailor **t_sailors = realloc(__sp.sailors, __sp.size * sizeof(Sailor));
+        Sailor **t_sailors = realloc(__sp.sailors, __sp.size * sizeof *sailor);
         if (!t_sailors) {
             fprintf(stderr, "realloc failed to allocate bytes = %zu\n", __sp.size);
             free(__sp.sailors);
