@@ -65,9 +65,10 @@ Regatta *regattaPoolAdd(Regatta *regatta)
         // grow the array allocation
         __rp.size = 3 * __rp.size / 2 + 8;
                 
-        Regatta **t_regattas = realloc(__rp.regattas, __rp.size * sizeof *regatta));
+        size_t req_bytes = __rp.size * sizeof *regatta;
+        Regatta **t_regattas = realloc(__rp.regattas, req_bytes);
         if (!t_regattas) {
-            fprintf(stdout, "realloc failed allocate bytes = %zu\n", __rp.size);
+            fprintf(stdout, "realloc failed allocate to bytes = %zu\n", req_bytes);
             free(__rp.regattas);
             exit(-1);
         }
@@ -100,6 +101,7 @@ typedef enum {
     NAF = -1,        // not a field, used in std and cust
     HELM = 0,        // must start at zero
     SAILNO,          // and then 1,2,3
+    RANK,
     GENDER,
     AGE,
     CLUB,
@@ -114,13 +116,14 @@ typedef struct FieldMapItem {
 
 
 const FieldMapItem pattern_fmis[] = {
-    /* std enum      cust   patten              &setter func ptr */
-    { HELM,          NAF,   "Helm",             &sailorSetName },          // the '&' is not strictly required by the compiler but more correct
-    { SAILNO,        NAF,   "Sailno",           &sailorSetSailnoString },
-    { GENDER,        NAF,   "M/F",              &sailorSetGender },
-    { AGE,           NAF,   "Age",              &sailorSetAgeString },
-    { CLUB,          NAF,   "Club",             &sailorSetClub },
-    { NAF,           NAF,   "",                 NULL },                    // End of list terminator
+    /* std enum      cust   patten                    &setter func ptr */
+    { HELM,          NAF,   "Helm",                   &sailorSetName },          // the '&' is not strictly required by the compiler but more correct
+    { SAILNO,        NAF,   "Sailno",                 &sailorSetSailnoString },
+    { RANK,          NAF,   "rank|seriesplace",       &sailorSetRankString },
+    { GENDER,        NAF,   "M/F",                    &sailorSetGender },
+    { AGE,           NAF,   "Age",                    &sailorSetAgeString },
+    { CLUB,          NAF,   "Club",                   &sailorSetClub },
+    { NAF,           NAF,   "",                       NULL },                    // End of list terminator
 };
 
 typedef struct FieldMap {
@@ -160,9 +163,8 @@ FieldMap *regattaMakeFieldMap(xmlNodeSetPtr header_cells)
 }
 
 Sailor *regattaBuildSailorFromMappedRow(ResultRow row, FieldMap *fm) {
-    // new but not into pool
-    Sailor *sailor= malloc(sizeof *sailor);
-    *sailor= (Sailor) {0};
+    // new but not into pool  (should be separate function?)
+    Sailor *sailor= sailorNewNoPool();
     
     for(int std = 0; std < RESULT_ROW_MAX_FIELDS && fm->items[std].cust != NAF; std++) {
         // use the function pointer "setter" to update the sailor with the mapped row value
@@ -188,14 +190,15 @@ void regattaLoad(Regatta *regatta)
         xmlXPathFreeNodeSet(header_cells);
         for(r = 1; r < rows->nodeNr; r++) {                              // r = 1, because we want to skip first row, as headers
             cells = getXpathNodeSetRel(".//td", rows->nodeTab[r], ctx);  // cells of the current row
-            for(c = 0; c < cells->nodeNr; c++) {
+            for(c = 0; c < cells->nodeNr && c < RESULT_ROW_MAX_FIELDS; c++) {
+                // we opt to build a whole row, as there may be some cases where cross cell validation / fixing occurs
                 row_vals[c] = (char *)xmlNodeGetContent(cells->nodeTab[c]);
             }
 
             Sailor *sailor_ex =regattaBuildSailorFromMappedRow(row_vals, fm);
             sailorPoolFindByExampleOrNew(sailor_ex); // sailor_ex gets free'd inside, or added to pool. ignore returned Sailor * for now
             
-            for(c = 0; c < cells->nodeNr; c++) free(row_vals[c]); // cleanup strings created
+            for(c = 0; c < cells->nodeNr && c < RESULT_ROW_MAX_FIELDS; c++) free(row_vals[c]); // cleanup strings created
             xmlXPathFreeNodeSet(cells);
         }
         xmlXPathFreeNodeSet(rows);
@@ -221,7 +224,7 @@ xmlDocPtr getDoc(char *url) {
     xmlDocPtr doc = htmlReadMemory(buffer.mem, buffer.size, base, NULL,
                                    HTML_PARSE_NONET | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING | HTML_PARSE_RECOVER); // for dirty html(5)
     free(base);
-    free(buffer.mem); // don't need this anymore
+    free(buffer.mem);
 
     if (doc == NULL ) {
         fprintf(stderr,"Document not parsed successfully. \n");

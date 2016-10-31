@@ -7,6 +7,7 @@ typedef struct Sailor {
     int id;
     char *name;
     unsigned int sailno;
+    unsigned int rank;
     char *gender;
     char *club;
     unsigned short int age;
@@ -19,11 +20,14 @@ Sailor *SailorPoolFindByIndex(int i);
 size_t sailorPoolGetUsed();
 void sailorPoolFree();
 
+Sailor *sailorNewNoPool();
 Sailor *sailorNew();
 void sailorFree(Sailor *sailor);
 Sailor *sailorSetName(Sailor *sailor, char *name);
 Sailor *sailorSetSailno(Sailor *sailor, unsigned int sailno);
 Sailor *sailorSetSailnoString(Sailor *sailor, char *sailno_str);
+Sailor *sailorSetRank(Sailor *sailor, unsigned int rank);
+Sailor *sailorSetRankString(Sailor *sailor, char *rank_str);
 Sailor *sailorSetGender(Sailor *sailor, char *gender);
 Sailor *sailorSetAge(Sailor *sailor, unsigned short int age);
 Sailor *sailorSetAgeString(Sailor *sailor, char *age_str);

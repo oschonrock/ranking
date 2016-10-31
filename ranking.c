@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "%zu Sailors\n", sailorPoolGetUsed());
     for (int s = 0; s < sailorPoolGetUsed(); s++) {
         Sailor *sailor = SailorPoolFindByIndex(s);
-        fprintf(stdout, "#%-3d %5i %-30.30s %-1s %3d %-30.30s\n", s + 1, sailor->sailno, sailor->name, sailor->gender, sailor->age, sailor->club);
+        fprintf(stdout, "#%-3d %5i %-30.30s %-1s %3d %-30.30s\n", sailor->id, sailor->sailno, sailor->name, sailor->gender, sailor->age, sailor->club);
     }
 
     sailorPoolFree();

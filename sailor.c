@@ -48,10 +48,16 @@ size_t sailorPoolGetUsed()
     return __sp.used;
 }
 
-Sailor *sailorNew()
+Sailor *sailorNewNoPool()
 {
     Sailor *sailor= malloc(sizeof *sailor);
     *sailor= (Sailor) {0};
+    return sailor;
+}
+
+Sailor *sailorNew()
+{
+    Sailor *sailor= sailorNewNoPool();
     sailorPoolAdd(sailor);
     return sailor;
 }
@@ -113,6 +119,17 @@ Sailor *sailorSetSailnoString(Sailor *sailor, char *sailno_str)
     return sailorSetSailno(sailor, atoi(sailno_str));
 }
 
+Sailor *sailorSetRank(Sailor *sailor, unsigned int rank)
+{
+    sailor->rank = rank;
+    return sailor;
+}
+
+Sailor *sailorSetRankString(Sailor *sailor, char *rank_str)
+{
+    return sailorSetRank(sailor, atoi(rank_str));
+}
+
 Sailor *sailorSetGender(Sailor *sailor, char *gender)
 {
     sailor->gender = strndup(gender, 1); // just first letter
@@ -151,7 +168,9 @@ Sailor *sailorPoolAdd(Sailor *sailor)
         }
         __sp.sailors = t_sailors;
     }
-    __sp.sailors[__sp.used++] = sailor;
+    sailor->id = __sp.used + 1; // not zero based for this
+    __sp.sailors[__sp.used] = sailor;
+    __sp.used++;
     pthread_mutex_unlock(&__sp_mutex);
     return sailor;
 }
