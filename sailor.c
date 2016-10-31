@@ -99,7 +99,7 @@ Sailor *sailorSetName(Sailor *sailor, char *name)
     return sailor;
 }
 
-Sailor *sailorSetSailno(Sailor *sailor, int sailno)
+Sailor *sailorSetSailno(Sailor *sailor, unsigned int sailno)
 {
     sailor->sailno = sailno;
     return sailor;
@@ -113,6 +113,23 @@ Sailor *sailorSetSailnoString(Sailor *sailor, char *sailno_str)
 Sailor *sailorSetGender(Sailor *sailor, char *gender)
 {
     sailor->gender = strndup(gender, 1); // just first letter
+    return sailor;
+}
+
+Sailor *sailorSetAge(Sailor *sailor, unsigned short int age)
+{
+    sailor->age = age;
+    return sailor;
+}
+
+Sailor *sailorSetAgeString(Sailor *sailor, char *age_str)
+{
+    return sailorSetAge(sailor, atoi(age_str));
+}
+
+Sailor *sailorSetClub(Sailor *sailor, char *club)
+{
+    sailor->club = strdup(club);
     return sailor;
 }
 

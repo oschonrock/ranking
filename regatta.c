@@ -102,6 +102,8 @@ typedef enum {
     HELM = 0,        // must start at zero
     SAILNO,          // and then 1,2,3
     GENDER,
+    AGE,
+    CLUB,
 } StdField;
 
 typedef struct FieldMapItem {
@@ -116,6 +118,8 @@ FieldMapItem pattern_fmis[] = {
     { HELM,          NAF,   "Helm",             &sailorSetName },  // the '&' is not strictly required by the compiler but more correct
     { SAILNO,        NAF,   "Sail no",          &sailorSetSailnoString },
     { GENDER,        NAF,   "M/F",              &sailorSetGender },
+    { AGE,           NAF,   "Age",              &sailorSetAgeString },
+    { CLUB,          NAF,   "Club",             &sailorSetClub },
     { NAF,           NAF,   "",                 NULL },  // End of list terminator
 };
 
@@ -150,10 +154,7 @@ bool preg_match(char *pattern, char *subject, bool ignore_case)
         &erroffset,                                   /* for error offset */
         NULL);                                        /* use default character tables */
 
-    /* Compilation failed: print the error message and exit */
-
-    if (re == NULL)
-    {
+    if (re == NULL) {
         fprintf(stderr, "PCRE compilation failed at offset %d: %s\n", erroffset, error);
         return false;
     }
@@ -170,25 +171,18 @@ bool preg_match(char *pattern, char *subject, bool ignore_case)
         ovector,              /* output vector for substring information */
         OVECCOUNT);           /* number of elements in the output vector */
 
-    /* Matching failed: handle error cases */
-
-    if (rc < 0)
-    {
-        switch(rc)
-        {
+    if (rc < 0) {
+        switch(rc) {
         case PCRE_ERROR_NOMATCH:
-            /* fprintf(stderr, "No match for %s in %s\n", pattern, subject); */
             break;
-            /*
-              Handle other special cases if you like
-            */
-        default: fprintf(stderr, "Matching error %d\n", rc); break;
+        default:
+            fprintf(stderr, "Matching error %d\n", rc);
+            break;
         }
         pcre_free(re);     /* Release memory used for the compiled pattern */
         return false;
     }
 
-    /* Match succeded */
     pcre_free(re);     /* Release memory used for the compiled pattern */
     return true;
     
@@ -203,8 +197,8 @@ FieldMap *regattaMakeFieldMap(xmlNodeSetPtr header_cells)
         val = (char *)xmlNodeGetContent(header_cells->nodeTab[c]);
         for(p = 0; pattern_fmis[p].std != NAF; p++) {
             if (preg_match(pattern_fmis[p].pattern, val, true)) {
-                fm->items[pattern_fmis[p].std] = pattern_fmis[p];   // copy pattern
-                fm->items[pattern_fmis[p].std].cust = c;            // record mathching pattern
+                fm->items[pattern_fmis[p].std] = pattern_fmis[p];   // copy FieldMapItem (shallow copy, pattern char prt only)
+                fm->items[pattern_fmis[p].std].cust = c;            // record matching mapping
                 break;
             }
         }

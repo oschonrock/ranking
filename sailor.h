@@ -8,6 +8,8 @@ typedef struct Sailor {
     char *name;
     unsigned int sailno;
     char *gender;
+    char *club;
+    unsigned short int age;
 } Sailor;
 
 void sailorPoolInit();
@@ -20,8 +22,11 @@ void sailorPoolFree();
 Sailor *sailorNew();
 void sailorFree(Sailor *sailor);
 Sailor *sailorSetName(Sailor *sailor, char *name);
-Sailor *sailorSetSailno(Sailor *sailor, int sailno);
+Sailor *sailorSetSailno(Sailor *sailor, unsigned int sailno);
 Sailor *sailorSetSailnoString(Sailor *sailor, char *sailno_str);
 Sailor *sailorSetGender(Sailor *sailor, char *gender);
+Sailor *sailorSetAge(Sailor *sailor, unsigned short int age);
+Sailor *sailorSetAgeString(Sailor *sailor, char *age_str);
+Sailor *sailorSetClub(Sailor *sailor, char *club);
 
 #endif /* __SAILOR_H__ */
