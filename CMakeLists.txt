@@ -21,9 +21,12 @@ add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin) 
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
+
 find_package(LibXml2 REQUIRED)
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(PCRE2 REQUIRED)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -37,5 +40,5 @@ target_link_libraries (ranking
   OpenSSL::SSL OpenSSL::Crypto
   Threads::Threads
   LibXml2::LibXml2 
-  pcre2-8) # pcre does not seem to have a cmake target
+  PCRE2::PCRE2)
 
