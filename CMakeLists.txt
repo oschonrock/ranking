@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(CMAKE_C_COMPILER clang)
+if (NOT WIN32)
+  set(CMAKE_C_COMPILER clang)
+endif()
 
 project(ranking)
 set(CMAKE_C_STANDARD 11) # C11 standard
