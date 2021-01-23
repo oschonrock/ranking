@@ -20,7 +20,7 @@ static RegattaPool         pool = {0};
 static pthread_mutex_t     mut;
 static pthread_mutexattr_t mut_attr;
 
-xmlDocPtr     getDoc(char* docname);
+xmlDocPtr     getDoc(char* url);
 xmlNodeSetPtr getXpathNodeSet(char* xpath, xmlXPathContextPtr ctx);
 xmlNodeSetPtr getXpathNodeSetRel(char* xpath, xmlNodePtr relnode,
                                  xmlXPathContextPtr ctx);
@@ -135,10 +135,9 @@ FieldMap* regattaNewFieldMap() {
 FieldMap* regattaMakeFieldMap(xmlNodeSetPtr header_cells) {
   FieldMap* fm = regattaNewFieldMap();
   char*     val;
-  int       c, p;
-  for (c = 0; c < header_cells->nodeNr; c++) {
-    val = (char*)xmlNodeGetContent(header_cells->nodeTab[c]);
-    for (p = 0; pattern_fmis[p].std != NAF; p++) {
+  for (int cell = 0; cell < header_cells->nodeNr; cell++) {
+    val = (char*)xmlNodeGetContent(header_cells->nodeTab[cell]);
+    for (int p = 0; pattern_fmis[p].std != NAF; p++) {
       char* trimmed_val = malloc(strlen(val) + 1);
       remove_spaces(trimmed_val, val);
       bool matched = preg_match(pattern_fmis[p].pattern, trimmed_val, true);
@@ -146,7 +145,7 @@ FieldMap* regattaMakeFieldMap(xmlNodeSetPtr header_cells) {
       if (matched) {
         fm->items[pattern_fmis[p].std] =
             pattern_fmis[p]; // copy FieldMapItem (shallow copy)
-        fm->items[pattern_fmis[p].std].cust = c; // record matching mapping
+        fm->items[pattern_fmis[p].std].cust = cell; // record matching mapping
         break;
       }
     }
@@ -169,12 +168,9 @@ void regattaLoad(Regatta* regatta) {
   xmlDocPtr          doc = getDoc(regatta->url);
   xmlXPathContextPtr ctx = xmlXPathNewContext(doc);
 
-  int           row, col;
-  ResultRow     row_vals = {0};
   xmlNodeSetPtr tables   = getXpathNodeSet("//table[@border=1]", ctx);
-  xmlNodeSetPtr rows, cells;
   if (tables->nodeNr == 1) {
-    rows = getXpathNodeSetRel(".//tr", tables->nodeTab[0],
+    xmlNodeSetPtr rows = getXpathNodeSetRel(".//tr", tables->nodeTab[0],
                               ctx); // rows of the current table
     xmlNodeSetPtr header_cells =
         getXpathNodeSetRel(".//td", rows->nodeTab[0], ctx);
@@ -183,10 +179,11 @@ void regattaLoad(Regatta* regatta) {
     xmlXPathFreeNodeSet(header_cells);
 
     // row = 1, to skip first row, as headers
-    for (row = 1; row < rows->nodeNr; row++) {
+    for (int row = 1; row < rows->nodeNr; row++) {
       // cells of the current row
-      cells = getXpathNodeSetRel(".//td", rows->nodeTab[row], ctx);
-      for (col = 0; col < cells->nodeNr && col < MAX_FIELDS; col++) {
+      xmlNodeSetPtr cells = getXpathNodeSetRel(".//td", rows->nodeTab[row], ctx);
+      ResultRow     row_vals = {0};
+      for (int col = 0; col < cells->nodeNr && col < MAX_FIELDS; col++) {
         // build a whole row. Sometimes cross cell validation / fixing occurs
         row_vals[col] = (char*)xmlNodeGetContent(cells->nodeTab[col]);
       }
@@ -196,7 +193,7 @@ void regattaLoad(Regatta* regatta) {
       sailorPoolFindByExampleOrNew(sailor_ex);
 
       // cleanup strings created
-      for (col = 0; col < cells->nodeNr && col < MAX_FIELDS; col++)
+      for (int col = 0; col < cells->nodeNr && col < MAX_FIELDS; col++)
         free(row_vals[col]);
 
       xmlXPathFreeNodeSet(cells);

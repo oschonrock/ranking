@@ -42,12 +42,14 @@ int curl_load_url(char* url, Buffer* buffer) {
     fprintf(stderr, "curl_easy_perform() failed: %s\n",
             curl_easy_strerror(res));
     return -1;
-  } else if ((res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE,
+  }
+  if ((res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE,
                                       &http_response_code)) != CURLE_OK) {
     fprintf(stderr, "curl_easy_getinfo() failed: %s\n",
             curl_easy_strerror(res));
     return -1;
-  } else if (http_response_code != 200) {
+  }
+  if (http_response_code != 200) {
     fprintf(stderr, "Received HTTP Code: %lu for url = '%s'\n",
             http_response_code, url);
     return -1;

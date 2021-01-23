@@ -26,11 +26,10 @@ int main() {
   const int urlcnt = sizeof(urls) / sizeof(urls[0]);
 
   pthread_t threads[REGATTA_COUNT];
-  int       rc, t;
-  for (t = 0; t < REGATTA_COUNT; t++) {
+  for (int t = 0; t < REGATTA_COUNT; t++) {
     Regatta* regatta = regattaNew();
     *regatta         = (Regatta){.id = t, .url = urls[t % urlcnt]};
-    rc = pthread_create(&threads[t], NULL, loadResults, (void*)regatta);
+    int rc = pthread_create(&threads[t], NULL, loadResults, (void*)regatta);
     if (rc) {
       fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
       exit(-1);
@@ -39,8 +38,8 @@ int main() {
 
   // wait for threads
   void* status;
-  for (t = 0; t < REGATTA_COUNT; t++) {
-    rc = pthread_join(threads[t], &status);
+  for (int t = 0; t < REGATTA_COUNT; t++) {
+    int rc = pthread_join(threads[t], &status);
     if (rc) {
       fprintf(stderr, "ERROR; return code from pthread_join() is %d\n", rc);
       exit(-1);

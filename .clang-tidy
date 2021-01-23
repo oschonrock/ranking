@@ -1,0 +1,13 @@
+Checks: '*,-fuchsia*,
+-*braces-around-statements,
+-hicpp-*,
+-readability-named-parameter,
+-modernize-use-trailing-return-type,
+-bugprone-narrowing-conversions,
+-google-runtime-references,
+-cppcoreguidelines-pro-bounds-constant-array-index,
+-misc-non-private-member-variables-in-classes,
+-cppcoreguidelines-*,
+-cert-*,
+-readability-magic-numbers,
+-google-readability-todo'
