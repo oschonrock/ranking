@@ -1,6 +1,3 @@
-/**
- */
-
 #include "regatta.h"
 #include "sailor.h"
 #include <pthread.h>
