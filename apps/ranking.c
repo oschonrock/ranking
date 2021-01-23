@@ -22,9 +22,9 @@ int main(/*int argc, char **argv*/) {
 
   char* urls[] = {
       // clang-format off
-    "http://www.kbsuk.com/data/OptimistIOCAEvents/data/results/2016inlmainnh.html",
-    "http://www.kbsuk.com/data/OptimistIOCAEvents/data/results/2016lscnh.html",
-    "http://www.kbsuk.com/data/OptimistIOCAEvents/data/results/2016eosmainnh.html",
+    "https://www.kbsuk.com/data/OptimistIOCAEvents/data/results/2018lscmainnh.html",
+    "https://www.kbsuk.com/data/OptimistIOCAEvents/data/results/2018eosmainnh.html",
+    "https://www.kbsuk.com/data/OptimistIOCAEvents/data/results/2018inlmainnh.html",
       // clang-format on
   };
   const int urlcnt = sizeof(urls) / sizeof(urls[0]);

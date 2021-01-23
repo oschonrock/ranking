@@ -233,8 +233,10 @@ xmlDocPtr getDoc(char* url) {
     fprintf(stderr, "Document not loaded successfully. \n");
     return NULL;
   }
-  char* base = strdup(dirname(url)); // take a copy as it is not guaranted to
+  char* mutable_url = strdup(url);
+  char* base = strdup(dirname(mutable_url)); // take a copy as it is not guaranted to
                                      // persist or might be part of url
+  free(mutable_url);
   xmlDocPtr doc = htmlReadMemory(buffer.mem, buffer.size, base, NULL,
                                  HTML_PARSE_NONET | HTML_PARSE_NOERROR |
                                      HTML_PARSE_NOWARNING |
