@@ -21,15 +21,15 @@ add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin) 
 
-
 find_package(LibXml2 REQUIRED)
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
-include_directories(include ${LIBXML2_INCLUDE_DIRS})
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
+
+include_directories(include)
 
 add_executable(ranking  apps/ranking.c src/sailor.c src/regatta.c src/curl.c src/easylib.c)
 target_link_libraries (ranking
