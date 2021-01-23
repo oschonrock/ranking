@@ -13,7 +13,7 @@ static size_t curl_write_cb(void* contents, size_t size, size_t nmemb,
   Buffer* buffer   = (Buffer*)user_p;
 
   // fprintf(stderr, "curl read nmemb = %zu * %zu bytes = %zu bytes realsize\n",
-  // nmemb, size, realsize);
+  //         nmemb, size, realsize);
   buffer->mem = realloc(buffer->mem, buffer->size + realsize + 1);
   if (buffer->mem == NULL) {
     fprintf(stderr, "not enough memory (realloc returned NULL)\n");
@@ -22,7 +22,7 @@ static size_t curl_write_cb(void* contents, size_t size, size_t nmemb,
 
   memcpy(&(buffer->mem[buffer->size]), contents, realsize);
   buffer->size += realsize;
-  buffer->mem[buffer->size] = 0;
+  buffer->mem[buffer->size] = '\0'; // null terminator
 
   return realsize;
 }
