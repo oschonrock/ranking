@@ -5,22 +5,22 @@
 #include <libxml/xpath.h>
 
 typedef struct Regatta {
-  int id;
-  char *url;
+  int   id;
+  char* url;
 } Regatta;
 
 typedef struct RegattaPool {
-  Regatta **regattas;
-  size_t used;
-  size_t size;
+  Regatta** regattas;
+  size_t    used;
+  size_t    size;
 } RegattaPool;
 
-void regattaPoolInit();
-Regatta *regattaPoolAdd(Regatta *regatta);
-Regatta *regattaNew();
-void regattaPoolFree();
+void     regattaPoolInit();
+Regatta* regattaPoolAdd(Regatta* regatta);
+Regatta* regattaNew();
+void     regattaPoolFree();
 
-void regattaAdd(int id, char *url);
-void regattaLoad(Regatta *regatta);
+void regattaAdd(int id, char* url);
+void regattaLoad(Regatta* regatta);
 
 #endif /* __REGATTA_H__ */
