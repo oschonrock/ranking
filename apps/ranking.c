@@ -7,15 +7,14 @@
 #include <stddef.h>
 #include <string.h>
 
-void* loadResults(void* threadarg) {
-  Regatta* regatta = threadarg;
-  regattaLoad(regatta);
+void* loadResults(void* regatta) {
+  regattaLoad((Regatta*)regatta);
   pthread_exit(NULL);
 }
 
-#define REGATTA_COUNT 3
+#define REGATTA_COUNT 3 // equals thread count
 
-int main(/*int argc, char **argv*/) {
+int main() {
 
   regattaPoolInit();
   sailorPoolInit();

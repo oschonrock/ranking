@@ -58,15 +58,9 @@ Sailor* sailorNew() {
 }
 
 void sailorFree(Sailor* sailor) {
-  if (sailor->name) {
-    free(sailor->name); // free the name
-  }
-  if (sailor->gender) {
-    free(sailor->gender); // free the gender
-  }
-  if (sailor->club) {
-    free(sailor->club); // free the club
-  }
+  free(sailor->name);
+  free(sailor->gender);
+  free(sailor->club);
   free(sailor);
 }
 

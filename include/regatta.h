@@ -9,12 +9,6 @@ typedef struct Regatta {
   char* url;
 } Regatta;
 
-typedef struct RegattaPool {
-  Regatta** regattas;
-  size_t    used;
-  size_t    size;
-} RegattaPool;
-
 void     regattaPoolInit();
 Regatta* regattaPoolAdd(Regatta* regatta);
 Regatta* regattaNew();

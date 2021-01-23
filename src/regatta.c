@@ -10,8 +10,16 @@
 #include <string.h>
 #include <sys/param.h> // MAXPATHLEN
 
+typedef struct RegattaPool {
+  Regatta** regattas;
+  size_t    used;
+  size_t    size;
+} RegattaPool;
+
 // just a single private instance of the pool, not going to pass it around
-RegattaPool __rp;
+// NULL pointer for __rp.regattas means that first call to regattaPoolAdd will
+// realloc from NULL (equiv to malloc)
+RegattaPool __rp = {0};
 
 // make it thread-safe
 pthread_mutex_t     __rp_mutex;
@@ -32,9 +40,6 @@ void regattaPoolInit() {
   curl_global_init(CURL_GLOBAL_ALL);
   curl_ssl_init_locks();
 
-  // NULL pointer for __rp.regattas means that first call to regattaPoolAdd will
-  // realloc from NULL (equiv to malloc)
-  __rp = (RegattaPool){0};
   // in case we make nested or recursive calls which both lock, we use RECURSIVE
   // type, which counts locks and unlocks
   pthread_mutexattr_init(&__rp_mutex_attr);
@@ -80,10 +85,7 @@ Regatta* regattaPoolAdd(Regatta* regatta) {
 }
 
 Regatta* regattaNew() {
-  Regatta* regatta = malloc(sizeof *regatta);
-  *regatta         = (Regatta){
-      0}; // not {} because that is a GNU extension:
-          // https://stackoverflow.com/questions/25578115/cryptic-struct-definition-in-c
+  Regatta* regatta = calloc(1, sizeof *regatta);
   regattaPoolAdd(regatta); // all the regattas must be in the pool
   return regatta;
 }
@@ -116,15 +118,16 @@ typedef struct FieldMapItem {
 } FieldMapItem;
 
 const FieldMapItem pattern_fmis[] = {
-    /* std enum      cust   patten                    &setter func ptr */
-    {HELM, NAF, "Helm", &sailorSetName}, // the '&' is not strictly required by
-                                         // the compiler but more correct
-    {SAILNO, NAF, "Sailno", &sailorSetSailnoString},
-    {RANK, NAF, "rank|seriesplace", &sailorSetRankString},
-    {GENDER, NAF, "M/F", &sailorSetGender},
-    {AGE, NAF, "Age", &sailorSetAgeString},
-    {CLUB, NAF, "Club", &sailorSetClub},
-    {NAF, NAF, "", NULL}, // End of list terminator
+    // clang-format off
+    // std enum      cust   pattern             &setter_func_ptr
+    {  HELM,         NAF,   "Helm",             &sailorSetName},
+    {  SAILNO,       NAF,   "Sailno",           &sailorSetSailnoString},
+    {  RANK,         NAF,   "rank|seriesplace", &sailorSetRankString},
+    {  GENDER,       NAF,   "M/F",              &sailorSetGender},
+    {  AGE,          NAF,   "Age",              &sailorSetAgeString},
+    {  CLUB,         NAF,   "Club",             &sailorSetClub},
+    {  NAF,          NAF,   "",                 NULL}, // End of list terminator
+    // clang-format on
 };
 
 typedef struct FieldMap {
@@ -181,7 +184,7 @@ void regattaLoad(Regatta* regatta) {
   xmlDocPtr          doc = getDoc(regatta->url);
   xmlXPathContextPtr ctx = xmlXPathNewContext(doc);
 
-  int           r, c;
+  int           row, col;
   ResultRow     row_vals = {0};
   xmlNodeSetPtr tables   = getXpathNodeSet("//table[@border=1]", ctx);
   xmlNodeSetPtr rows, cells;
@@ -191,29 +194,33 @@ void regattaLoad(Regatta* regatta) {
     xmlNodeSetPtr header_cells =
         getXpathNodeSetRel(".//td", rows->nodeTab[0], ctx);
     FieldMap* fm = regattaMakeFieldMap(header_cells);
+
     xmlXPathFreeNodeSet(header_cells);
-    for (r = 1; r < rows->nodeNr;
-         r++) { // r = 1, because we want to skip first row, as headers
-      cells = getXpathNodeSetRel(".//td", rows->nodeTab[r],
-                                 ctx); // cells of the current row
-      for (c = 0; c < cells->nodeNr && c < RESULT_ROW_MAX_FIELDS; c++) {
+
+    // iterate over main table, with our field_map
+    // r = 1, because we want to skip first row, as headers
+    for (row = 1; row < rows->nodeNr; row++) {
+      // cells of the current row
+      cells = getXpathNodeSetRel(".//td", rows->nodeTab[row], ctx);
+      for (col = 0; col < cells->nodeNr && col < RESULT_ROW_MAX_FIELDS; col++) {
         // we opt to build a whole row, as there may be some cases where cross
         // cell validation / fixing occurs
-        row_vals[c] = (char*)xmlNodeGetContent(cells->nodeTab[c]);
+        row_vals[col] = (char*)xmlNodeGetContent(cells->nodeTab[col]);
       }
 
       Sailor* sailor_ex = regattaBuildSailorFromMappedRow(row_vals, fm);
-      sailorPoolFindByExampleOrNew(
-          sailor_ex); // sailor_ex gets free'd inside, or added to pool. ignore
-                      // returned Sailor * for now
+      // sailor_ex free'd inside call, or added to pool.
+      sailorPoolFindByExampleOrNew(sailor_ex);
 
-      for (c = 0; c < cells->nodeNr && c < RESULT_ROW_MAX_FIELDS; c++)
-        free(row_vals[c]); // cleanup strings created
+      // cleanup strings created
+      for (col = 0; col < cells->nodeNr && col < RESULT_ROW_MAX_FIELDS; col++)
+        free(row_vals[col]);
+
       xmlXPathFreeNodeSet(cells);
     }
     xmlXPathFreeNodeSet(rows);
     free(fm);
-  }
+  } // if not 1 table, then TODO: skipped for now
 
   xmlXPathFreeNodeSet(tables);
   xmlXPathFreeContext(ctx);
@@ -234,8 +241,9 @@ xmlDocPtr getDoc(char* url) {
     return NULL;
   }
   char* mutable_url = strdup(url);
-  char* base = strdup(dirname(mutable_url)); // take a copy as it is not guaranted to
-                                     // persist or might be part of url
+  char* base =
+      strdup(dirname(mutable_url)); // take a copy as it is not guaranted to
+                                    // persist or might be part of url
   free(mutable_url);
   xmlDocPtr doc = htmlReadMemory(buffer.mem, buffer.size, base, NULL,
                                  HTML_PARSE_NONET | HTML_PARSE_NOERROR |
