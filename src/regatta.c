@@ -98,7 +98,7 @@ void regattaFree(Regatta* regatta) {
                  // result xmlChar's
 }
 
-#define RESULT_ROW_MAX_FIELDS 25
+#define MAX_FIELDS 25
 
 typedef enum {
   NAF  = -1, // not a field, used in std and cust
@@ -131,14 +131,14 @@ const FieldMapItem pattern_fmis[] = {
 };
 
 typedef struct FieldMap {
-  FieldMapItem items[RESULT_ROW_MAX_FIELDS];
+  FieldMapItem items[MAX_FIELDS];
 } FieldMap;
 
-typedef char* ResultRow[RESULT_ROW_MAX_FIELDS];
+typedef char* ResultRow[MAX_FIELDS];
 
 FieldMap* regattaNewFieldMap() {
   FieldMap* fm = malloc(sizeof *fm);
-  for (int std = 0; std < RESULT_ROW_MAX_FIELDS; std++)
+  for (int std = 0; std < MAX_FIELDS; std++)
     fm->items[std] = (FieldMapItem){std, NAF, NULL, NULL};
   return fm;
 }
@@ -171,7 +171,7 @@ Sailor* regattaBuildSailorFromMappedRow(ResultRow row, FieldMap* fm) {
   // new but not into pool  (should be separate function?)
   Sailor* sailor = sailorNewNoPool();
 
-  for (int std = 0; std < RESULT_ROW_MAX_FIELDS && fm->items[std].cust != NAF;
+  for (int std = 0; std < MAX_FIELDS && fm->items[std].cust != NAF;
        std++) {
     // use the function pointer "setter" to update the sailor with the mapped
     // row value
@@ -197,14 +197,12 @@ void regattaLoad(Regatta* regatta) {
 
     xmlXPathFreeNodeSet(header_cells);
 
-    // iterate over main table, with our field_map
-    // r = 1, because we want to skip first row, as headers
+    // row = 1, to skip first row, as headers
     for (row = 1; row < rows->nodeNr; row++) {
       // cells of the current row
       cells = getXpathNodeSetRel(".//td", rows->nodeTab[row], ctx);
-      for (col = 0; col < cells->nodeNr && col < RESULT_ROW_MAX_FIELDS; col++) {
-        // we opt to build a whole row, as there may be some cases where cross
-        // cell validation / fixing occurs
+      for (col = 0; col < cells->nodeNr && col < MAX_FIELDS; col++) {
+        // build a whole row. Sometimes cross cell validation / fixing occurs
         row_vals[col] = (char*)xmlNodeGetContent(cells->nodeTab[col]);
       }
 
@@ -213,7 +211,7 @@ void regattaLoad(Regatta* regatta) {
       sailorPoolFindByExampleOrNew(sailor_ex);
 
       // cleanup strings created
-      for (col = 0; col < cells->nodeNr && col < RESULT_ROW_MAX_FIELDS; col++)
+      for (col = 0; col < cells->nodeNr && col < MAX_FIELDS; col++)
         free(row_vals[col]);
 
       xmlXPathFreeNodeSet(cells);
@@ -229,21 +227,18 @@ void regattaLoad(Regatta* regatta) {
 
 xmlDocPtr getDoc(char* url) {
 
-  Buffer buffer =
-      (Buffer){0}; // .mem NULL prt to memory buffer will be set by realloc
+  Buffer buffer = (Buffer){0}; // ptr set by realloc
 
-  // can't pass url to libxml->htmlParseFile, appears it's not thread safe, need
-  // to use curl
-  // TODO: there might be an option to parse the stream, rather than wait for
-  // the full html: htmlReadIO?
+  // Can't just call libxml->htmlParseFile, not thread safe. Use curl
   if (curl_load_url(url, &buffer)) {
     fprintf(stderr, "Document not loaded successfully. \n");
     return NULL;
   }
+  // some imlementations of dirname need a mutable
   char* mutable_url = strdup(url);
-  char* base =
-      strdup(dirname(mutable_url)); // take a copy as it is not guaranted to
-                                    // persist or might be part of url
+  // take copy, not guaranted to persist
+  // htmlReadMemory needs this for relative urls within the html document
+  char* base = strdup(dirname(mutable_url));
   free(mutable_url);
   xmlDocPtr doc = htmlReadMemory(buffer.mem, buffer.size, base, NULL,
                                  HTML_PARSE_NONET | HTML_PARSE_NOERROR |
@@ -266,10 +261,7 @@ xmlNodeSetPtr getXpathNodeSetRel(char* xpath, xmlNodePtr relnode,
 }
 
 xmlNodeSetPtr getXpathNodeSet(char* xpath, xmlXPathContextPtr ctx) {
-
-  xmlXPathObjectPtr result;
-
-  result = xmlXPathEvalExpression(BAD_CAST xpath, ctx);
+  xmlXPathObjectPtr result = xmlXPathEvalExpression(BAD_CAST xpath, ctx);
   if (result == NULL) {
     fprintf(stderr, "Error in xmlXPathEvalExpression\n");
     return NULL;
@@ -280,8 +272,8 @@ xmlNodeSetPtr getXpathNodeSet(char* xpath, xmlXPathContextPtr ctx) {
     return NULL;
   }
   xmlNodeSetPtr nodeSet = result->nodesetval;
-  xmlXPathFreeNodeSetList(
-      result); // frees the xmlXPathObjectPtr but not the list of nodes in
-               // nodesetval (nor nodes themselves)
+  // frees the xmlXPathObjectPtr but not the list of nodes in
+  // nodesetval (nor nodes themselves)
+  xmlXPathFreeNodeSetList(result);
   return nodeSet;
 }
