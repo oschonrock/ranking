@@ -8,46 +8,40 @@
 
 typedef struct SailorPool {
   Sailor** sailors;
-  size_t   used;
+  size_t   count;
   size_t   size;
 } SailorPool;
 
-// just a single private instance of the pool, not going to pass it around
-// no external code should acces this, because it involves a bunch of locking to
-// make it thread safe
-SailorPool __sp;
-
-// make it thread-safe
-pthread_mutex_t     __sp_mutex;
-pthread_mutexattr_t __sp_mutex_attr;
+// just a single private instance of the pool
+static SailorPool          pool;
+static pthread_mutex_t     mut;
+static pthread_mutexattr_t mut_attr;
 
 void sailorPoolInit() {
   // setup the __sp struct
-  __sp = (SailorPool){0};
-  // in case we make nested or recursive calls which both lock, we use RECURSIVE
-  // type, which counts locks and unlocks
-  pthread_mutexattr_init(&__sp_mutex_attr);
-  pthread_mutexattr_settype(&__sp_mutex_attr, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init(&__sp_mutex, &__sp_mutex_attr);
+  pool = (SailorPool){0};
+  // recursive mutex for  nested or recursive calls 
+  pthread_mutexattr_init(&mut_attr);
+  pthread_mutexattr_settype(&mut_attr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(&mut, &mut_attr);
 }
 
 void sailorPoolFree() {
-  pthread_mutex_lock(&__sp_mutex);
-  for (size_t i = 0; i < __sp.used; i++) {
-    sailorFree(__sp.sailors[i]); // each sailor Object
+  pthread_mutex_lock(&mut);
+  for (size_t i = 0; i < pool.count; i++) {
+    sailorFree(pool.sailors[i]); // each sailor Object
   }
-  free(__sp.sailors);     // and the array of pointers to those objects
-  __sp = (SailorPool){0}; // and reset the whole pool
-  pthread_mutex_unlock(&__sp_mutex);
-  pthread_mutex_destroy(&__sp_mutex);
-  pthread_mutexattr_destroy(&__sp_mutex_attr);
+  free(pool.sailors);     // and the array of pointers to those objects
+  pool = (SailorPool){0}; // and reset the whole pool
+  pthread_mutex_unlock(&mut);
+  pthread_mutex_destroy(&mut);
+  pthread_mutexattr_destroy(&mut_attr);
 }
 
-size_t sailorPoolGetUsed() { return __sp.used; }
+size_t sailorPoolGetUsed() { return pool.count; }
 
 Sailor* sailorNewNoPool() {
-  Sailor* sailor = malloc(sizeof *sailor);
-  *sailor        = (Sailor){0};
+  Sailor* sailor = calloc(1, sizeof *sailor);
   return sailor;
 }
 
@@ -67,11 +61,11 @@ void sailorFree(Sailor* sailor) {
 Sailor* sailorPoolFindByExampleOrNew(Sailor* ex_sailor) {
   bool   found = false;
   size_t i;
-  pthread_mutex_lock(&__sp_mutex);
-  for (i = 0; !found && i < __sp.used; i++) {
+  pthread_mutex_lock(&mut);
+  for (i = 0; !found && i < pool.count; i++) {
     if (ex_sailor->name &&
-        strcasecmp(__sp.sailors[i]->name, ex_sailor->name) == 0 &&
-        ex_sailor->sailno && __sp.sailors[i]->sailno == ex_sailor->sailno) {
+        strcasecmp(pool.sailors[i]->name, ex_sailor->name) == 0 &&
+        ex_sailor->sailno && pool.sailors[i]->sailno == ex_sailor->sailno) {
       found = true;
     }
   }
@@ -79,17 +73,19 @@ Sailor* sailorPoolFindByExampleOrNew(Sailor* ex_sailor) {
   // the state of the __sp which might get changed
   Sailor* sailor;
   if (found) {
-    sailor = __sp.sailors[i];
+    sailor = pool.sailors[i];
     // TODO update details
     sailorFree(ex_sailor);
   } else {
     sailor = ex_sailor;
     sailorPoolAdd(sailor);
   }
-  pthread_mutex_unlock(&__sp_mutex);
+  pthread_mutex_unlock(&mut);
   return sailor;
 }
 
+// need all the below setters, because used as function pointers
+// in the field map
 Sailor* sailorSetName(Sailor* sailor, char* name) {
   sailor->name = strdup(name);
   return sailor;
@@ -133,24 +129,24 @@ Sailor* sailorSetClub(Sailor* sailor, char* club) {
 }
 
 Sailor* sailorPoolAdd(Sailor* sailor) {
-  pthread_mutex_lock(&__sp_mutex);
-  if (__sp.used == __sp.size) {
+  pthread_mutex_lock(&mut);
+  if (pool.count == pool.size) {
     // grow the array allocation
-    __sp.size = 3 * __sp.size / 2 + 8;
+    pool.size = 3 * pool.size / 2 + 8;
 
-    Sailor** t_sailors = realloc(__sp.sailors, __sp.size * sizeof *sailor);
+    Sailor** t_sailors = realloc(pool.sailors, pool.size * sizeof *sailor);
     if (!t_sailors) {
-      fprintf(stderr, "realloc failed to allocate bytes = %zu\n", __sp.size);
-      free(__sp.sailors);
+      fprintf(stderr, "realloc failed to allocate bytes = %zu\n", pool.size);
+      free(pool.sailors);
       exit(-1);
     }
-    __sp.sailors = t_sailors;
+    pool.sailors = t_sailors;
   }
-  sailor->id              = __sp.used + 1; // not zero based for this
-  __sp.sailors[__sp.used] = sailor;
-  __sp.used++;
-  pthread_mutex_unlock(&__sp_mutex);
+  sailor->id               = pool.count + 1; // not zero based for this
+  pool.sailors[pool.count] = sailor;
+  pool.count++;
+  pthread_mutex_unlock(&mut);
   return sailor;
 }
 
-Sailor* SailorPoolFindByIndex(int i) { return __sp.sailors[i]; }
+Sailor* SailorPoolFindByIndex(int i) { return pool.sailors[i]; }

@@ -7,47 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* we have this global to let the callback get easy access to it */
-static pthread_mutex_t* lockarray;
-
-__attribute__((unused)) static void curl_ssl_lock_cb( int mode, int type, char* file, int line) {
-  (void)file;
-  (void)line;
-  if (mode & CRYPTO_LOCK) {
-    pthread_mutex_lock(&(lockarray[type]));
-  } else {
-    pthread_mutex_unlock(&(lockarray[type]));
-  }
-}
-
-__attribute__((unused)) static unsigned long curl_ssl_thread_id(void) {
-  unsigned long ret;
-  ret = (unsigned long)pthread_self();
-  return ret;
-}
-
-void curl_ssl_init_locks(void) {
-  int i;
-
-  lockarray = (pthread_mutex_t*)OPENSSL_malloc(CRYPTO_num_locks() *
-                                               sizeof(pthread_mutex_t));
-  for (i = 0; i < CRYPTO_num_locks(); i++) {
-    pthread_mutex_init(&(lockarray[i]), NULL);
-  }
-  CRYPTO_set_id_callback((unsigned long (*)())curl_ssl_thread_id);
-  CRYPTO_set_locking_callback((void (*)())curl_ssl_lock_cb);
-}
-
-void curl_ssl_kill_locks(void) {
-  int i;
-
-  CRYPTO_set_locking_callback(NULL);
-  for (i = 0; i < CRYPTO_num_locks(); i++)
-    pthread_mutex_destroy(&(lockarray[i]));
-
-  OPENSSL_free(lockarray);
-}
-
 static size_t curl_write_cb(void* contents, size_t size, size_t nmemb,
                             void* user_p) {
   size_t  realsize = size * nmemb;

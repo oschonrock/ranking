@@ -8,22 +8,17 @@
 #include <libxml/xpath.h>
 #include <pthread.h>
 #include <string.h>
-#include <sys/param.h> // MAXPATHLEN
 
 typedef struct RegattaPool {
   Regatta** regattas;
-  size_t    used;
+  size_t    count;
   size_t    size;
 } RegattaPool;
 
-// just a single private instance of the pool, not going to pass it around
-// NULL pointer for __rp.regattas means that first call to regattaPoolAdd will
-// realloc from NULL (equiv to malloc)
-RegattaPool __rp = {0};
-
-// make it thread-safe
-pthread_mutex_t     __rp_mutex;
-pthread_mutexattr_t __rp_mutex_attr;
+// just a single private instance of the pool
+static RegattaPool         pool = {0};
+static pthread_mutex_t     mut;
+static pthread_mutexattr_t mut_attr;
 
 xmlDocPtr     getDoc(char* docname);
 xmlNodeSetPtr getXpathNodeSet(char* xpath, xmlXPathContextPtr ctx);
@@ -33,54 +28,50 @@ void          regattaFree(Regatta* regatta);
 
 void regattaPoolInit() {
   xmlInitParser();
-  LIBXML_TEST_VERSION; // don't need this ';' but without it the indentation
-                       // gets messed up
+  LIBXML_TEST_VERSION; // `;` for indentation only
 
-  /* Must initialize libcurl before any threads are started */
+  // Must initialize libcurl before any threads are started
   curl_global_init(CURL_GLOBAL_ALL);
-  curl_ssl_init_locks();
 
-  // in case we make nested or recursive calls which both lock, we use RECURSIVE
-  // type, which counts locks and unlocks
-  pthread_mutexattr_init(&__rp_mutex_attr);
-  pthread_mutexattr_settype(&__rp_mutex_attr, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init(&__rp_mutex, &__rp_mutex_attr);
+  // recursive mutex for nested or recursive calls
+  pthread_mutexattr_init(&mut_attr);
+  pthread_mutexattr_settype(&mut_attr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(&mut, &mut_attr);
 }
 
 void regattaPoolFree() {
-  pthread_mutex_lock(&__rp_mutex);
-  for (size_t i = 0; i < __rp.used; i++) {
-    regattaFree(__rp.regattas[i]); // each regatta Object
+  pthread_mutex_lock(&mut);
+  for (size_t i = 0; i < pool.count; i++) {
+    regattaFree(pool.regattas[i]); // each regatta Object
   }
-  free(__rp.regattas); // and the array of pointers to those objects
-  __rp = (RegattaPool){0};
-  pthread_mutex_unlock(&__rp_mutex);
-  pthread_mutex_destroy(&__rp_mutex);
-  pthread_mutexattr_destroy(&__rp_mutex_attr);
+  free(pool.regattas); // and the array of pointers to those objects
+  pool = (RegattaPool){0};
+  pthread_mutex_unlock(&mut);
+  pthread_mutex_destroy(&mut);
+  pthread_mutexattr_destroy(&mut_attr);
 
-  curl_ssl_kill_locks();
   curl_global_cleanup();
   xmlCleanupParser();
 }
 
 // http://stackoverflow.com/questions/3536153/c-dynamically-growing-array
 Regatta* regattaPoolAdd(Regatta* regatta) {
-  pthread_mutex_lock(&__rp_mutex);
-  if (__rp.used == __rp.size) {
+  pthread_mutex_lock(&mut);
+  if (pool.count == pool.size) {
     // grow the array allocation
-    __rp.size = 3 * __rp.size / 2 + 8;
+    pool.size = 3 * pool.size / 2 + 8;
 
-    size_t    req_bytes  = __rp.size * sizeof *regatta;
-    Regatta** t_regattas = realloc(__rp.regattas, req_bytes);
+    size_t    req_bytes  = pool.size * sizeof *regatta;
+    Regatta** t_regattas = realloc(pool.regattas, req_bytes);
     if (!t_regattas) {
       fprintf(stdout, "realloc failed allocate to bytes = %zu\n", req_bytes);
-      free(__rp.regattas);
+      free(pool.regattas);
       exit(-1);
     }
-    __rp.regattas = t_regattas;
+    pool.regattas = t_regattas;
   }
-  __rp.regattas[__rp.used++] = regatta;
-  pthread_mutex_unlock(&__rp_mutex);
+  pool.regattas[pool.count++] = regatta;
+  pthread_mutex_unlock(&mut);
   return regatta;
 }
 
@@ -91,11 +82,7 @@ Regatta* regattaNew() {
 }
 
 void regattaFree(Regatta* regatta) {
-  // this causes probs because the urls are often in the source code of the
-  // caller and hence not malloc'd and read only free(regatta->url);     // char
-  // * for the url
-  free(regatta); // and the struct which contains the 2D array of pointer to the
-                 // result xmlChar's
+  free(regatta); // struct contains the 2D array of pointers to the xmlChar's
 }
 
 #define MAX_FIELDS 25
@@ -103,18 +90,20 @@ void regattaFree(Regatta* regatta) {
 typedef enum {
   NAF  = -1, // not a field, used in std and cust
   HELM = 0,  // must start at zero
-  SAILNO,    // and then 1,2,3
+  SAILNO,
   RANK,
   GENDER,
   AGE,
   CLUB,
 } StdField;
 
+typedef Sailor* (*setter_t)(Sailor*, char*);
+
 typedef struct FieldMapItem {
   StdField std;
   int      cust;
   char*    pattern;
-  Sailor* (*setter)(Sailor*, char*);
+  setter_t setter;
 } FieldMapItem;
 
 const FieldMapItem pattern_fmis[] = {
@@ -156,8 +145,7 @@ FieldMap* regattaMakeFieldMap(xmlNodeSetPtr header_cells) {
       free(trimmed_val);
       if (matched) {
         fm->items[pattern_fmis[p].std] =
-            pattern_fmis[p]; // copy FieldMapItem (shallow copy, pattern char
-                             // prt only)
+            pattern_fmis[p]; // copy FieldMapItem (shallow copy)
         fm->items[pattern_fmis[p].std].cust = c; // record matching mapping
         break;
       }
@@ -168,13 +156,10 @@ FieldMap* regattaMakeFieldMap(xmlNodeSetPtr header_cells) {
 }
 
 Sailor* regattaBuildSailorFromMappedRow(ResultRow row, FieldMap* fm) {
-  // new but not into pool  (should be separate function?)
   Sailor* sailor = sailorNewNoPool();
 
-  for (int std = 0; std < MAX_FIELDS && fm->items[std].cust != NAF;
-       std++) {
-    // use the function pointer "setter" to update the sailor with the mapped
-    // row value
+  for (int std = 0; std < MAX_FIELDS && fm->items[std].cust != NAF; std++) {
+    // use func_ptr "setter" to update the sailor with the mapped values
     (fm->items[std].setter)(sailor, row[fm->items[std].cust]);
   }
   return sailor;
