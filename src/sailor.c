@@ -13,29 +13,14 @@ typedef struct SailorPool {
 } SailorPool;
 
 // just a single private instance of the pool
-static SailorPool          pool;
-static pthread_mutex_t     mut;
-static pthread_mutexattr_t mut_attr;
-
-void sailorPoolInit(void) {
-  // setup the __sp struct
-  pool = (SailorPool){0};
-  // recursive mutex for  nested or recursive calls
-  pthread_mutexattr_init(&mut_attr);
-  pthread_mutexattr_settype(&mut_attr, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init(&mut, &mut_attr);
-}
+static SailorPool pool = {0};
 
 void sailorPoolFree(void) {
-  pthread_mutex_lock(&mut);
   for (size_t i = 0; i < pool.count; i++) {
     sailorFree(pool.sailors[i]); // each sailor Object
   }
   free(pool.sailors);     // and the array of pointers to those objects
   pool = (SailorPool){0}; // and reset the whole pool
-  pthread_mutex_unlock(&mut);
-  pthread_mutex_destroy(&mut);
-  pthread_mutexattr_destroy(&mut_attr);
 }
 
 size_t sailorPoolGetUsed(void) { return pool.count; }
@@ -91,7 +76,6 @@ static void sailorUpdate(Sailor* new, Sailor* existing) {
 }
 
 Sailor* sailorPoolFindByExampleOrNew(Sailor* new) {
-  pthread_mutex_lock(&mut);
   Sailor* sailor;
   for (size_t i = 0; i < pool.count; i++) {
     if (sailorMatch(new, pool.sailors[i])) {
@@ -104,7 +88,6 @@ Sailor* sailorPoolFindByExampleOrNew(Sailor* new) {
   sailor = new;
   sailorPoolAdd(sailor);
 done:
-  pthread_mutex_unlock(&mut);
   return sailor;
 }
 
@@ -153,7 +136,6 @@ Sailor* sailorSetClub(Sailor* sailor, char* club) {
 }
 
 Sailor* sailorPoolAdd(Sailor* sailor) {
-  pthread_mutex_lock(&mut);
   if (pool.count == pool.size) {
     // grow the array allocation
     pool.size = 3 * pool.size / 2 + 8;
@@ -169,7 +151,6 @@ Sailor* sailorPoolAdd(Sailor* sailor) {
   sailor->id               = pool.count + 1; // not zero based for this
   pool.sailors[pool.count] = sailor;
   pool.count++;
-  pthread_mutex_unlock(&mut);
   return sailor;
 }
 

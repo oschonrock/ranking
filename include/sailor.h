@@ -13,7 +13,6 @@ typedef struct Sailor {
   unsigned short int age;
 } Sailor;
 
-void    sailorPoolInit(void);
 Sailor* sailorPoolAdd(Sailor* sailor);
 Sailor* sailorPoolFindByExampleOrNew(Sailor* new);
 Sailor* SailorPoolFindByIndex(int i);

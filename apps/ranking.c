@@ -15,7 +15,6 @@ void* loadDoc(void* regatta) {
 
 int main() {
   regattaPoolInit();
-  sailorPoolInit();
 
   char* urls[] = {
     // clang-format off
