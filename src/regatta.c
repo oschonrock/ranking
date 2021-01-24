@@ -7,6 +7,7 @@
 #include <libxml/HTMLparser.h>
 #include <libxml/xpath.h>
 #include <pthread.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef struct RegattaPool {
@@ -66,7 +67,7 @@ Regatta* regattaPoolAdd(Regatta* regatta) {
     if (!t_regattas) {
       fprintf(stdout, "realloc failed allocate to bytes = %zu\n", req_bytes);
       free(pool.regattas);
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     pool.regattas = t_regattas;
   }

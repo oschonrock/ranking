@@ -138,7 +138,7 @@ Sailor* sailorPoolAdd(Sailor* sailor) {
     if (!t_sailors) {
       fprintf(stderr, "realloc failed to allocate bytes = %zu\n", pool.size);
       free(pool.sailors);
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     pool.sailors = t_sailors;
   }

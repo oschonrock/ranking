@@ -2,6 +2,7 @@
 #include "sailor.h"
 #include <pthread.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
 void* loadResults(void* regatta) {
@@ -32,7 +33,7 @@ int main() {
     int rc = pthread_create(&threads[t], NULL, loadResults, (void*)regatta);
     if (rc) {
       fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
   }
 
@@ -42,7 +43,7 @@ int main() {
     int rc = pthread_join(threads[t], &status);
     if (rc) {
       fprintf(stderr, "ERROR; return code from pthread_join() is %d\n", rc);
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
   }
 
@@ -57,5 +58,5 @@ int main() {
   sailorPoolFree();
   regattaPoolFree();
   pthread_exit(NULL);
-  return 0;
+  return EXIT_SUCCESS;
 }
