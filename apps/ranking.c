@@ -27,39 +27,38 @@ int main() {
 
   // spawn theads to retrieve docs over network and use libxml2 to parse them
   pthread_t threads[REGATTA_COUNT];
-  for (int t = 0; t < REGATTA_COUNT; t++) {
-    Regatta* regatta = regattaNew(t, urls[t % urlcnt]);
-    int      rc = pthread_create(&threads[t], NULL, loadDoc, (void*)regatta);
+  for (int i = 0; i < REGATTA_COUNT; i++) {
+    Regatta* regatta = regattaNew(i, urls[i % urlcnt]);
+    int      rc = pthread_create(&threads[i], NULL, loadDoc, (void*)regatta);
     if (rc) {
-      fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
+      fprintf(stderr, "ERROR: pthread_create() returned %d\n", rc);
       exit(EXIT_FAILURE);
     }
   }
 
   // wait for threads to finish
-  for (int t = 0; t < REGATTA_COUNT; t++) {
+  for (int i = 0; i < REGATTA_COUNT; i++) {
     void* status;
-    int   rc = pthread_join(threads[t], &status);
+    int   rc = pthread_join(threads[i], &status);
     if (rc) {
-      fprintf(stderr, "ERROR; return code from pthread_join() is %d\n", rc);
+      fprintf(stderr, "ERROR: pthread_join() returned %d\n", rc);
       exit(EXIT_FAILURE);
     }
   }
 
   // process data: single threaded because the business logic is order dependent
-  for (int t = 0; t < REGATTA_COUNT; t++)
-    regattaLoad(regattaPoolFindByIndex(t));
+  for (int i = 0; i < REGATTA_COUNT; i++)
+    regattaLoad(regattaPoolFindByIndex(i));
 
   // and display it
   fprintf(stderr, "%zu Sailors\n", sailorPoolGetUsed());
-  for (size_t s = 0; s < sailorPoolGetUsed(); s++) {
-    Sailor* sailor = SailorPoolFindByIndex(s);
+  for (size_t i = 0; i < sailorPoolGetUsed(); i++) {
+    Sailor* sailor = sailorPoolGet(i);
     fprintf(stdout, "#%-3d %5i %-30s %-1s %3d %-30.30s\n", sailor->id,
             sailor->sailno, sailor->name, sailor->gender, sailor->age,
             sailor->club);
   }
 
-  // cleanup
   sailorPoolFree();
   regattaPoolFree();
   return EXIT_SUCCESS;

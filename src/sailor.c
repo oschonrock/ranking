@@ -16,25 +16,23 @@ typedef struct SailorPool {
 static SailorPool pool = {0};
 
 void sailorPoolFree(void) {
-  for (size_t i = 0; i < pool.count; i++) {
-    sailorFree(pool.sailors[i]); // each sailor Object
-  }
-  free(pool.sailors);     // and the array of pointers to those objects
-  pool = (SailorPool){0}; // and reset the whole pool
+  for (size_t i = 0; i < pool.count; i++) sailorFree(pool.sailors[i]);
+  free(pool.sailors);
+  pool = (SailorPool){0};
 }
 
 size_t sailorPoolGetUsed(void) { return pool.count; }
 
 Sailor* sailorNewNoPool(void) {
   Sailor* sailor = calloc(1, sizeof *sailor);
+  if (!sailor) {
+    perror("calloc sailor");
+    exit(EXIT_FAILURE);
+  }
   return sailor;
 }
 
-Sailor* sailorNew(void) {
-  Sailor* sailor = sailorNewNoPool();
-  sailorPoolAdd(sailor);
-  return sailor;
-}
+Sailor* sailorNew(void) { return sailorPoolAdd(sailorNewNoPool()); }
 
 void sailorFree(Sailor* sailor) {
   free(sailor->name);
@@ -149,4 +147,4 @@ Sailor* sailorPoolAdd(Sailor* sailor) {
   return sailor;
 }
 
-Sailor* SailorPoolFindByIndex(int i) { return pool.sailors[i]; }
+Sailor* sailorPoolGet(int i) { return pool.sailors[i]; }

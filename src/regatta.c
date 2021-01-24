@@ -59,7 +59,6 @@ void regattaPoolFree() {
 Regatta* regattaPoolAdd(Regatta* regatta) {
   pthread_mutex_lock(&mut);
   if (pool.count == pool.size) {
-    // grow the array allocation
     pool.size = 3 * pool.size / 2 + 8;
 
     size_t    req_bytes  = pool.size * sizeof *regatta;
@@ -78,6 +77,10 @@ Regatta* regattaPoolAdd(Regatta* regatta) {
 
 Regatta* regattaNew(int id, char* url) {
   Regatta* regatta = calloc(1, sizeof *regatta);
+  if (!regatta) {
+    perror("calloc regatta");
+    exit(EXIT_FAILURE);
+  }
   regatta->id      = id;
   regatta->url     = strdup(url); // take copy, needed later
   regattaPoolAdd(regatta);        // all the regattas must be in the pool
@@ -133,6 +136,10 @@ typedef char* ResultRow[MAX_FIELDS];
 
 FieldMap* regattaNewFieldMap() {
   FieldMap* fm = malloc(sizeof *fm);
+  if (!fm) {
+    perror("malloc FieldMap");
+    exit(EXIT_FAILURE);
+  }
   for (int std = 0; std < MAX_FIELDS; std++)
     fm->items[std] = (FieldMapItem){std, NAF, NULL, NULL};
   return fm;
@@ -144,8 +151,7 @@ FieldMap* regattaMakeFieldMap(xmlNodeSetPtr header_cells) {
   for (int cell = 0; cell < header_cells->nodeNr; cell++) {
     val = (char*)xmlNodeGetContent(header_cells->nodeTab[cell]);
     for (int p = 0; pattern_fmis[p].std != NAF; p++) {
-      char* trimmed_val = malloc(strlen(val) + 1);
-      remove_spaces(trimmed_val, val);
+      char* trimmed_val = remove_spaces(val);
       bool matched = preg_match(pattern_fmis[p].pattern, trimmed_val, true);
       free(trimmed_val);
       if (matched) {

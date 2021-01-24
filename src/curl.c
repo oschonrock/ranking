@@ -1,10 +1,9 @@
-// directly from: https://curl.haxx.se/libcurl/c/threaded-ssl.html
-
 #include "curl.h"
 #include <curl/curl.h>
 #include <openssl/crypto.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static size_t curl_write_cb(void* contents, size_t size, size_t nmemb,
@@ -15,9 +14,9 @@ static size_t curl_write_cb(void* contents, size_t size, size_t nmemb,
   // fprintf(stderr, "curl read nmemb = %zu * %zu bytes = %zu bytes realsize\n",
   //         nmemb, size, realsize);
   buffer->mem = realloc(buffer->mem, buffer->size + realsize + 1);
-  if (buffer->mem == NULL) {
-    fprintf(stderr, "not enough memory (realloc returned NULL)\n");
-    return 0;
+  if (!buffer->mem) {
+    perror("realloc curl buffer");
+    exit(EXIT_FAILURE);
   }
 
   memcpy(&(buffer->mem[buffer->size]), contents, realsize);

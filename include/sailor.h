@@ -15,7 +15,7 @@ typedef struct Sailor {
 
 Sailor* sailorPoolAdd(Sailor* sailor);
 Sailor* sailorPoolFindByExampleOrNew(Sailor* new);
-Sailor* SailorPoolFindByIndex(int i);
+Sailor* sailorPoolGet(int i);
 size_t  sailorPoolGetUsed(void);
 void    sailorPoolFree(void);
 

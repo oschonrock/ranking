@@ -15,10 +15,10 @@ bool preg_match(const PCRE2_SPTR pattern, const PCRE2_SPTR subject,
   PCRE2_SIZE  erroffset;
   re = pcre2_compile(pattern, /* the pattern */
                      PCRE2_ZERO_TERMINATED,
-                     ignore_case ? PCRE2_CASELESS : 0, /* default options */
-                     &errornumber,                     /* for error message */
-                     &erroffset,                       /* for error offset */
-                     NULL); /* use default character tables */
+                     ignore_case ? PCRE2_CASELESS : 0, // default options 
+                     &errornumber,   
+                     &erroffset,     
+                     NULL); // use default character tables 
 
   if (re == NULL) {
     PCRE2_UCHAR buffer[256];
@@ -59,13 +59,20 @@ bool preg_match(const PCRE2_SPTR pattern, const PCRE2_SPTR subject,
 }
 
 // http://stackoverflow.com/questions/1726302/removing-spaces-from-a-string-in-c
-void remove_spaces(char* restrict res, const char* restrict str) {
+char* remove_spaces(const char* restrict str) {
+  char* res = malloc(strlen(str) + 1);
+  if (!res) {
+    perror("calloc res");
+    exit(EXIT_FAILURE);
+  }
+  char* resptr = res;
   while (*str != '\0') {
     if (!isspace(*str)) {
-      *res = *str;
-      res++;
+      *resptr = *str;
+      resptr++;
     }
     str++;
   }
-  *res = '\0';
+  *resptr = '\0';
+  return res;
 }
