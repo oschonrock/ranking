@@ -68,6 +68,9 @@ static void sailorUpdate(Sailor* new, Sailor* existing) {
     free(existing->gender);
     existing->gender = strdup(new->gender); // take copy
   }
+
+  if (new->age && existing->age != new->age)
+    existing->age = new->age;
 }
 
 Sailor* sailorPoolFindByExampleOrNew(Sailor* new) {
