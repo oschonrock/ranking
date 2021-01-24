@@ -78,9 +78,9 @@ Regatta* regattaPoolAdd(Regatta* regatta) {
 
 Regatta* regattaNew(int id, char* url) {
   Regatta* regatta = calloc(1, sizeof *regatta);
-  regatta->id = id;
-  regatta->url = strdup(url); // take copy, needed later
-  regattaPoolAdd(regatta); // all the regattas must be in the pool
+  regatta->id      = id;
+  regatta->url     = strdup(url); // take copy, needed later
+  regattaPoolAdd(regatta);        // all the regattas must be in the pool
   return regatta;
 }
 
@@ -88,6 +88,8 @@ void regattaFree(Regatta* regatta) {
   if (regatta) free(regatta->url);
   free(regatta); // struct contains the 2D array of pointers to the xmlChar's
 }
+
+Regatta* regattaPoolFindByIndex(int i) { return pool.regattas[i]; }
 
 #define MAX_FIELDS 25
 
@@ -160,20 +162,23 @@ FieldMap* regattaMakeFieldMap(xmlNodeSetPtr header_cells) {
 
 Sailor* regattaBuildSailorFromMappedRow(ResultRow row, FieldMap* fm) {
   Sailor* sailor = sailorNewNoPool();
-  for (int std = 0; std < MAX_FIELDS && fm->items[std].cust != NAF; std++) 
+  for (int std = 0; std < MAX_FIELDS && fm->items[std].cust != NAF; std++)
     // use func_ptr "setter" to update the sailor with the mapped values
     (fm->items[std].setter)(sailor, row[fm->items[std].cust]);
   return sailor;
 }
 
-void regattaLoad(Regatta* regatta) {
-  xmlDocPtr          doc = getDoc(regatta->url);
-  xmlXPathContextPtr ctx = xmlXPathNewContext(doc);
+void regattaLoadDoc(Regatta* regatta) {
+  regatta->doc = getDoc(regatta->url);
+}
 
-  xmlNodeSetPtr tables   = getXpathNodeSet("//table[@border=1]", ctx);
+void regattaLoad(Regatta* regatta) {
+  xmlXPathContextPtr ctx = xmlXPathNewContext(regatta->doc);
+
+  xmlNodeSetPtr tables = getXpathNodeSet("//table[@border=1]", ctx);
   if (tables->nodeNr == 1) {
     xmlNodeSetPtr rows = getXpathNodeSetRel(".//tr", tables->nodeTab[0],
-                              ctx); // rows of the current table
+                                            ctx); // rows of the current table
     xmlNodeSetPtr header_cells =
         getXpathNodeSetRel(".//td", rows->nodeTab[0], ctx);
     FieldMap* fm = regattaMakeFieldMap(header_cells);
@@ -183,14 +188,15 @@ void regattaLoad(Regatta* regatta) {
     // row = 1, to skip first row, as headers
     for (int row = 1; row < rows->nodeNr; row++) {
       // cells of the current row
-      xmlNodeSetPtr cells = getXpathNodeSetRel(".//td", rows->nodeTab[row], ctx);
-      ResultRow     row_vals = {0};
+      xmlNodeSetPtr cells =
+          getXpathNodeSetRel(".//td", rows->nodeTab[row], ctx);
+      ResultRow row_vals = {0};
       for (int col = 0; col < cells->nodeNr && col < MAX_FIELDS; col++) {
         // build a whole row. Sometimes cross cell validation / fixing occurs
         row_vals[col] = (char*)xmlNodeGetContent(cells->nodeTab[col]);
       }
 
-      Sailor* sailor      = regattaBuildSailorFromMappedRow(row_vals, fm);
+      Sailor* sailor = regattaBuildSailorFromMappedRow(row_vals, fm);
       // example free'd inside call, or added to pool.
       sailorPoolFindByExampleOrNew(sailor);
 
@@ -206,11 +212,11 @@ void regattaLoad(Regatta* regatta) {
 
   xmlXPathFreeNodeSet(tables);
   xmlXPathFreeContext(ctx);
-  xmlFreeDoc(doc);
+  xmlFreeDoc(regatta->doc);
+  regatta->doc = NULL;
 }
 
 xmlDocPtr getDoc(char* url) {
-
   Buffer buffer = (Buffer){0}; // ptr set by realloc
 
   // Can't just call libxml->htmlParseFile, not thread safe. Use curl
@@ -220,8 +226,8 @@ xmlDocPtr getDoc(char* url) {
   }
   // htmlReadMemory needs this for relative urls within the html document
   // take copy, not guaranted to persist
-  char* base = strdup(dirname(url));
-  xmlDocPtr doc = htmlReadMemory(buffer.mem, buffer.size, base, NULL,
+  char*     base = strdup(dirname(url));
+  xmlDocPtr doc  = htmlReadMemory(buffer.mem, buffer.size, base, NULL,
                                  HTML_PARSE_NONET | HTML_PARSE_NOERROR |
                                      HTML_PARSE_NOWARNING |
                                      HTML_PARSE_RECOVER); // for dirty html(5)
@@ -258,3 +264,4 @@ xmlNodeSetPtr getXpathNodeSet(char* xpath, xmlXPathContextPtr ctx) {
   xmlXPathFreeNodeSetList(result);
   return nodeSet;
 }
+

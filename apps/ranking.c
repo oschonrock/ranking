@@ -5,47 +5,53 @@
 #include <stdlib.h>
 #include <string.h>
 
-void* loadResults(void* regatta) {
-  regattaLoad((Regatta*)regatta);
+// purely a wrapper for pointer casting
+void* loadDoc(void* regatta) {
+  regattaLoadDoc((Regatta*)regatta);
   pthread_exit(NULL);
 }
 
 #define REGATTA_COUNT 3 // equals thread count
 
 int main() {
-
   regattaPoolInit();
   sailorPoolInit();
 
   char* urls[] = {
-      // clang-format off
+    // clang-format off
     "https://www.kbsuk.com/data/OptimistIOCAEvents/data/results/2018lscmainnh.html",
     "https://www.kbsuk.com/data/OptimistIOCAEvents/data/results/2018eosmainnh.html",
     "https://www.kbsuk.com/data/OptimistIOCAEvents/data/results/2018inlmainnh.html",
-      // clang-format on
+    // clang-format on
   };
   const int urlcnt = sizeof(urls) / sizeof(urls[0]);
 
+  // spawn theads to retrieve docs over network and use libxml2 to parse them
   pthread_t threads[REGATTA_COUNT];
   for (int t = 0; t < REGATTA_COUNT; t++) {
     Regatta* regatta = regattaNew(t, urls[t % urlcnt]);
-    int rc = pthread_create(&threads[t], NULL, loadResults, (void*)regatta);
+    int      rc = pthread_create(&threads[t], NULL, loadDoc, (void*)regatta);
     if (rc) {
       fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
       exit(EXIT_FAILURE);
     }
   }
 
-  // wait for threads
+  // wait for threads to finish
   for (int t = 0; t < REGATTA_COUNT; t++) {
     void* status;
-    int rc = pthread_join(threads[t], &status);
+    int   rc = pthread_join(threads[t], &status);
     if (rc) {
       fprintf(stderr, "ERROR; return code from pthread_join() is %d\n", rc);
       exit(EXIT_FAILURE);
     }
   }
 
+  // process the data
+  for (int t = 0; t < REGATTA_COUNT; t++)
+    regattaLoad(regattaPoolFindByIndex(t));
+
+  // and display it
   fprintf(stderr, "%zu Sailors\n", sailorPoolGetUsed());
   for (size_t s = 0; s < sailorPoolGetUsed(); s++) {
     Sailor* sailor = SailorPoolFindByIndex(s);
@@ -54,9 +60,8 @@ int main() {
             sailor->club);
   }
 
+  // cleanup
   sailorPoolFree();
   regattaPoolFree();
-  // don't call pthread_exit(NULL) here because we have
-  // specifically pthread_join'd all threads already
   return EXIT_SUCCESS;
 }
