@@ -190,9 +190,9 @@ void regattaLoad(Regatta* regatta) {
         row_vals[col] = (char*)xmlNodeGetContent(cells->nodeTab[col]);
       }
 
-      Sailor* emample = regattaBuildSailorFromMappedRow(row_vals, fm);
+      Sailor* sailor      = regattaBuildSailorFromMappedRow(row_vals, fm);
       // example free'd inside call, or added to pool.
-      sailorPoolFindByExampleOrNew(emample);
+      sailorPoolFindByExampleOrNew(sailor);
 
       // cleanup strings created
       for (int col = 0; col < cells->nodeNr && col < MAX_FIELDS; col++)

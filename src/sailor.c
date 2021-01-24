@@ -58,19 +58,50 @@ void sailorFree(Sailor* sailor) {
   free(sailor);
 }
 
-Sailor* sailorPoolFindByExampleOrNew(Sailor* example) {
+// MUST be called under sailor locked mutex
+static bool sailorMatch(Sailor* new, Sailor* existing) {
+  // only allow match if new has non null/zero name and sailno
+  bool res = (new->name&& strcasecmp(existing->name, new->name) == 0) &&
+             (new->sailno && existing->sailno == new->sailno);
+
+  return res;
+}
+
+// MUST be called under sailor locked mutex
+static void sailorUpdate(Sailor* new, Sailor* existing) {
+  // only allow match if new has non null/zero name and sailno
+  if (new->name && strcasecmp(existing->name, new->name) != 0) {
+    free(existing->name);
+    existing->name = new->name;
+  }
+
+  if (new->sailno && existing->sailno != new->sailno)
+    existing->sailno = new->sailno;
+
+  // causes free error, not sure why
+  // if (new->club && existing->club != new->club) {
+  //   free(existing->club);
+  //   existing->club = new->club;
+  // }
+
+  // if (new->gender && existing->gender != new->gender) {
+  //   free(existing->gender);
+  //   existing->gender = new->gender;
+  // }
+}
+
+Sailor* sailorPoolFindByExampleOrNew(Sailor* new) {
   pthread_mutex_lock(&mut);
   Sailor* sailor;
   for (size_t i = 0; i < pool.count; i++) {
-    if (example->name &&
-        strcasecmp(pool.sailors[i]->name, example->name) == 0 &&
-        example->sailno && pool.sailors[i]->sailno == example->sailno) {
-      sailor = pool.sailors[i]; // TODO update details
-      sailorFree(example);
+    if (sailorMatch(new, pool.sailors[i])) {
+      sailorUpdate(new, pool.sailors[i]);
+      sailor = pool.sailors[i];
+      sailorFree(new);
       goto done;
     }
   }
-  sailor = example;
+  sailor = new;
   sailorPoolAdd(sailor);
 done:
   pthread_mutex_unlock(&mut);

@@ -37,8 +37,8 @@ int main() {
   }
 
   // wait for threads
-  void* status;
   for (int t = 0; t < REGATTA_COUNT; t++) {
+    void* status;
     int rc = pthread_join(threads[t], &status);
     if (rc) {
       fprintf(stderr, "ERROR; return code from pthread_join() is %d\n", rc);
@@ -49,7 +49,7 @@ int main() {
   fprintf(stderr, "%zu Sailors\n", sailorPoolGetUsed());
   for (size_t s = 0; s < sailorPoolGetUsed(); s++) {
     Sailor* sailor = SailorPoolFindByIndex(s);
-    fprintf(stdout, "#%-3d %5i %-30.30s %-1s %3d %-30.30s\n", sailor->id,
+    fprintf(stdout, "#%-3d %5i %-30s %-1s %3d %-30.30s\n", sailor->id,
             sailor->sailno, sailor->name, sailor->gender, sailor->age,
             sailor->club);
   }
