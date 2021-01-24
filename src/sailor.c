@@ -43,7 +43,6 @@ void sailorFree(Sailor* sailor) {
   free(sailor);
 }
 
-// MUST be called under sailor locked mutex
 static bool sailorMatch(Sailor* new, Sailor* existing) {
   // only allow match if new has non null/zero name and sailno
   bool res = (new->name&& strcasecmp(existing->name, new->name) == 0) &&
@@ -52,10 +51,9 @@ static bool sailorMatch(Sailor* new, Sailor* existing) {
   return res;
 }
 
-// MUST be called under sailor locked mutex
 static void sailorUpdate(Sailor* new, Sailor* existing) {
   // only allow match if new has non null/zero name and sailno
-  if (new->name && strcasecmp(existing->name, new->name) != 0) {
+  if (new->name && strcmp(existing->name, new->name) != 0) {
     free(existing->name);
     existing->name = new->name;
   }
@@ -63,16 +61,15 @@ static void sailorUpdate(Sailor* new, Sailor* existing) {
   if (new->sailno && existing->sailno != new->sailno)
     existing->sailno = new->sailno;
 
-  // causes free error, not sure why
-  // if (new->club && existing->club != new->club) {
-  //   free(existing->club);
-  //   existing->club = new->club;
-  // }
+  if (new->club && strcmp(existing->club, new->club) != 0) {
+    free(existing->club);
+    existing->club = strdup(new->club); // take copy
+  }
 
-  // if (new->gender && existing->gender != new->gender) {
-  //   free(existing->gender);
-  //   existing->gender = new->gender;
-  // }
+  if (new->gender && strcmp(existing->gender, new->gender) != 0) {
+    free(existing->gender);
+    existing->gender = strdup(new->gender); // take copy
+  }
 }
 
 Sailor* sailorPoolFindByExampleOrNew(Sailor* new) {
@@ -80,14 +77,12 @@ Sailor* sailorPoolFindByExampleOrNew(Sailor* new) {
   for (size_t i = 0; i < pool.count; i++) {
     if (sailorMatch(new, pool.sailors[i])) {
       sailorUpdate(new, pool.sailors[i]);
-      sailor = pool.sailors[i];
       sailorFree(new);
-      goto done;
+      return pool.sailors[i];
     }
   }
   sailor = new;
   sailorPoolAdd(sailor);
-done:
   return sailor;
 }
 

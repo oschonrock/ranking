@@ -46,7 +46,7 @@ int main() {
     }
   }
 
-  // process the data
+  // process data: single threaded because the business logic is order dependent
   for (int t = 0; t < REGATTA_COUNT; t++)
     regattaLoad(regattaPoolFindByIndex(t));
 
