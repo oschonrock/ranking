@@ -57,6 +57,7 @@ int main() {
 
   sailorPoolFree();
   regattaPoolFree();
-  pthread_exit(NULL);
+  // don't call pthread_exit(NULL) here because we have
+  // specifically pthread_join'd all threads already
   return EXIT_SUCCESS;
 }
