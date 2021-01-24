@@ -1,9 +1,9 @@
 #include "sailor.h"
 #include <pthread.h>
 #include <stdbool.h>
-#include <stdio.h>  // fprintf
-#include <stdlib.h> // realloc
-#include <string.h> // strdup
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 
 typedef struct SailorPool {
