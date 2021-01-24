@@ -20,7 +20,7 @@ static pthread_mutexattr_t mut_attr;
 void sailorPoolInit(void) {
   // setup the __sp struct
   pool = (SailorPool){0};
-  // recursive mutex for  nested or recursive calls 
+  // recursive mutex for  nested or recursive calls
   pthread_mutexattr_init(&mut_attr);
   pthread_mutexattr_settype(&mut_attr, PTHREAD_MUTEX_RECURSIVE);
   pthread_mutex_init(&mut, &mut_attr);
@@ -58,28 +58,21 @@ void sailorFree(Sailor* sailor) {
   free(sailor);
 }
 
-Sailor* sailorPoolFindByExampleOrNew(Sailor* ex_sailor) {
-  bool   found = false;
-  size_t i;
+Sailor* sailorPoolFindByExampleOrNew(Sailor* example) {
   pthread_mutex_lock(&mut);
-  for (i = 0; !found && i < pool.count; i++) {
-    if (ex_sailor->name &&
-        strcasecmp(pool.sailors[i]->name, ex_sailor->name) == 0 &&
-        ex_sailor->sailno && pool.sailors[i]->sailno == ex_sailor->sailno) {
-      found = true;
+  Sailor* sailor;
+  for (size_t i = 0; i < pool.count; i++) {
+    if (example->name &&
+        strcasecmp(pool.sailors[i]->name, example->name) == 0 &&
+        example->sailno && pool.sailors[i]->sailno == example->sailno) {
+      sailor = pool.sailors[i]; // TODO update details
+      sailorFree(example);
+      goto done;
     }
   }
-  // we must still hold the lock here, bacause the state of "found" depends on
-  // the state of the __sp which might get changed
-  Sailor* sailor;
-  if (found) {
-    sailor = pool.sailors[i];
-    // TODO update details
-    sailorFree(ex_sailor);
-  } else {
-    sailor = ex_sailor;
-    sailorPoolAdd(sailor);
-  }
+  sailor = example;
+  sailorPoolAdd(sailor);
+done:
   pthread_mutex_unlock(&mut);
   return sailor;
 }

@@ -160,11 +160,9 @@ FieldMap* regattaMakeFieldMap(xmlNodeSetPtr header_cells) {
 
 Sailor* regattaBuildSailorFromMappedRow(ResultRow row, FieldMap* fm) {
   Sailor* sailor = sailorNewNoPool();
-
-  for (int std = 0; std < MAX_FIELDS && fm->items[std].cust != NAF; std++) {
+  for (int std = 0; std < MAX_FIELDS && fm->items[std].cust != NAF; std++) 
     // use func_ptr "setter" to update the sailor with the mapped values
     (fm->items[std].setter)(sailor, row[fm->items[std].cust]);
-  }
   return sailor;
 }
 
@@ -192,9 +190,9 @@ void regattaLoad(Regatta* regatta) {
         row_vals[col] = (char*)xmlNodeGetContent(cells->nodeTab[col]);
       }
 
-      Sailor* sailor_ex = regattaBuildSailorFromMappedRow(row_vals, fm);
-      // sailor_ex free'd inside call, or added to pool.
-      sailorPoolFindByExampleOrNew(sailor_ex);
+      Sailor* emample = regattaBuildSailorFromMappedRow(row_vals, fm);
+      // example free'd inside call, or added to pool.
+      sailorPoolFindByExampleOrNew(emample);
 
       // cleanup strings created
       for (int col = 0; col < cells->nodeNr && col < MAX_FIELDS; col++)
