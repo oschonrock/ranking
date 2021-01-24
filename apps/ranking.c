@@ -28,8 +28,7 @@ int main() {
 
   pthread_t threads[REGATTA_COUNT];
   for (int t = 0; t < REGATTA_COUNT; t++) {
-    Regatta* regatta = regattaNew();
-    *regatta         = (Regatta){.id = t, .url = urls[t % urlcnt]};
+    Regatta* regatta = regattaNew(t, urls[t % urlcnt]);
     int rc = pthread_create(&threads[t], NULL, loadResults, (void*)regatta);
     if (rc) {
       fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);

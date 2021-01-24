@@ -17,7 +17,7 @@ static SailorPool          pool;
 static pthread_mutex_t     mut;
 static pthread_mutexattr_t mut_attr;
 
-void sailorPoolInit() {
+void sailorPoolInit(void) {
   // setup the __sp struct
   pool = (SailorPool){0};
   // recursive mutex for  nested or recursive calls 
@@ -26,7 +26,7 @@ void sailorPoolInit() {
   pthread_mutex_init(&mut, &mut_attr);
 }
 
-void sailorPoolFree() {
+void sailorPoolFree(void) {
   pthread_mutex_lock(&mut);
   for (size_t i = 0; i < pool.count; i++) {
     sailorFree(pool.sailors[i]); // each sailor Object
@@ -38,14 +38,14 @@ void sailorPoolFree() {
   pthread_mutexattr_destroy(&mut_attr);
 }
 
-size_t sailorPoolGetUsed() { return pool.count; }
+size_t sailorPoolGetUsed(void) { return pool.count; }
 
-Sailor* sailorNewNoPool() {
+Sailor* sailorNewNoPool(void) {
   Sailor* sailor = calloc(1, sizeof *sailor);
   return sailor;
 }
 
-Sailor* sailorNew() {
+Sailor* sailorNew(void) {
   Sailor* sailor = sailorNewNoPool();
   sailorPoolAdd(sailor);
   return sailor;

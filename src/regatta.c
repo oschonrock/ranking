@@ -76,13 +76,16 @@ Regatta* regattaPoolAdd(Regatta* regatta) {
   return regatta;
 }
 
-Regatta* regattaNew() {
+Regatta* regattaNew(int id, char* url) {
   Regatta* regatta = calloc(1, sizeof *regatta);
+  regatta->id = id;
+  regatta->url = strdup(url); // take copy, needed later
   regattaPoolAdd(regatta); // all the regattas must be in the pool
   return regatta;
 }
 
 void regattaFree(Regatta* regatta) {
+  if (regatta) free(regatta->url);
   free(regatta); // struct contains the 2D array of pointers to the xmlChar's
 }
 
@@ -217,12 +220,9 @@ xmlDocPtr getDoc(char* url) {
     fprintf(stderr, "Document not loaded successfully. \n");
     return NULL;
   }
-  // some imlementations of dirname need a mutable
-  char* mutable_url = strdup(url);
-  // take copy, not guaranted to persist
   // htmlReadMemory needs this for relative urls within the html document
-  char* base = strdup(dirname(mutable_url));
-  free(mutable_url);
+  // take copy, not guaranted to persist
+  char* base = strdup(dirname(url));
   xmlDocPtr doc = htmlReadMemory(buffer.mem, buffer.size, base, NULL,
                                  HTML_PARSE_NONET | HTML_PARSE_NOERROR |
                                      HTML_PARSE_NOWARNING |

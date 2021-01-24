@@ -13,15 +13,15 @@ typedef struct Sailor {
   unsigned short int age;
 } Sailor;
 
-void    sailorPoolInit();
+void    sailorPoolInit(void);
 Sailor* sailorPoolAdd(Sailor* sailor);
 Sailor* sailorPoolFindByExampleOrNew(Sailor* ex_sailor);
 Sailor* SailorPoolFindByIndex(int i);
-size_t  sailorPoolGetUsed();
-void    sailorPoolFree();
+size_t  sailorPoolGetUsed(void);
+void    sailorPoolFree(void);
 
-Sailor* sailorNewNoPool();
-Sailor* sailorNew();
+Sailor* sailorNewNoPool(void);
+Sailor* sailorNew(void);
 void    sailorFree(Sailor* sailor);
 Sailor* sailorSetName(Sailor* sailor, char* name);
 Sailor* sailorSetSailno(Sailor* sailor, unsigned int sailno);

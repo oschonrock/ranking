@@ -9,10 +9,10 @@ typedef struct Regatta {
   char* url;
 } Regatta;
 
-void     regattaPoolInit();
+void     regattaPoolInit(void);
 Regatta* regattaPoolAdd(Regatta* regatta);
-Regatta* regattaNew();
-void     regattaPoolFree();
+Regatta* regattaNew(int id, char* url);
+void     regattaPoolFree(void);
 
 void regattaAdd(int id, char* url);
 void regattaLoad(Regatta* regatta);
